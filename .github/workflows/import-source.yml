@@ -1,0 +1,32 @@
+name: Import ContractorCopilot source
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  import-source:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download the temporary source archive
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p /tmp/contractorcopilot
+          gh release download bootstrap-source \
+            --repo "$GITHUB_REPOSITORY" \
+            --pattern "ContractorCopilot-source.zip" \
+            --dir /tmp/contractorcopilot
+      - name: Restore the application source
+        run: |
+          mkdir -p /tmp/contractorcopilot/source
+          unzip -q /tmp/contractorcopilot/ContractorCopilot-source.zip -d /tmp/contractorcopilot/source
+          rsync -a --delete --exclude '.git' /tmp/contractorcopilot/source/ ./
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Add ContractorCopilot application source"
+          git push
