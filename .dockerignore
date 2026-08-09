@@ -1,0 +1,19 @@
+# Local build outputs and installed packages are recreated in the image.
+.next
+node_modules
+.pnpm-store
+coverage
+*.tsbuildinfo
+*.log
+
+# Never place credentials or developer-specific files in the image context.
+.env
+.env.*
+!.env.example
+
+# Source-control and local desktop artifacts are not part of the runtime.
+.git
+.github
+.DS_Store
+sources
+

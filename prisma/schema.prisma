@@ -1,0 +1,429 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum MemberRole {
+  OWNER
+  ADMIN
+  ESTIMATOR
+  TECHNICIAN
+  VIEWER
+}
+
+enum JobStatus {
+  DRAFT
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  ARCHIVED
+}
+
+enum AssetType {
+  PHOTO
+  VOICE_NOTE
+  DOCUMENT
+}
+
+enum EstimateStatus {
+  DRAFT
+  READY
+  SENT
+  ACCEPTED
+  DECLINED
+  EXPIRED
+}
+
+enum EstimateItemCategory {
+  MATERIAL
+  LABOR
+  EQUIPMENT
+  DISPOSAL
+  PERMIT
+  OTHER
+}
+
+enum ProposalStatus {
+  DRAFT
+  SENT
+  VIEWED
+  ACCEPTED
+  DECLINED
+  EXPIRED
+}
+
+enum PaymentType {
+  DEPOSIT
+  BALANCE
+  REFUND
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+  CANCELED
+}
+
+enum SubscriptionStatus {
+  INCOMPLETE
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  UNPAID
+  PAUSED
+}
+
+/**
+ * The only purchasable ContractorCopilot tier is Pro.
+ */
+enum BillingPlan {
+  FREE
+  PRO
+}
+
+/**
+ * A document creation is counted once, not once per download. This keeps the
+ * free allowance fair while allowing the same document to be re-opened or
+ * re-downloaded without consuming another credit.
+ */
+enum DocumentKind {
+  PROPOSAL
+  INVOICE
+}
+
+model User {
+  id                              String                  @id @default(cuid())
+  email                           String                  @unique
+  passwordHash                    String?
+  emailVerified                   DateTime?
+  name                            String?
+  image                           String?
+  isAdmin                         Boolean                 @default(false)
+  sessionVersion                  Int                     @default(0)
+  twoFactorSecretCiphertext       String?                 @db.Text
+  twoFactorPendingCiphertext      String?                 @db.Text
+  twoFactorPendingExpiresAt       DateTime?
+  twoFactorEnabledAt              DateTime?
+  twoFactorLastUsedCounter        Int?
+  createdAt                       DateTime                @default(now())
+  updatedAt                       DateTime                @updatedAt
+  accounts                        Account[]
+  sessions                        Session[]
+  memberships                     Membership[]
+  twoFactorRecoveryCodes          TwoFactorRecoveryCode[]
+  createdEstimates                Estimate[]              @relation("EstimateCreatedBy")
+  auditLogs                       AuditLog[]              @relation("AuditActor")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+/** One-time recovery codes for a user's optional authenticator-app factor. */
+model TwoFactorRecoveryCode {
+  id        String   @id @default(cuid())
+  userId    String
+  codeHash  String   @unique
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, usedAt])
+}
+
+model Company {
+  id                              String             @id @default(cuid())
+  name                            String
+  slug                            String             @unique
+  email                           String?
+  phone                           String?
+  address                         String?
+  logoUrl                         String?
+  brandColor                      String?            @default("#0F766E")
+  taxRateBps                      Int                @default(0)
+  defaultMarkupBps                Int                @default(2500)
+  defaultDepositPercent           Int                @default(30)
+  defaultProposalValidityDays     Int                @default(14)
+  defaultWarrantyText             String?            @db.Text
+  notificationsEnabled            Boolean            @default(true)
+  currency                        String             @default("usd")
+  stripeCustomerId                String?            @unique
+  stripeConnectAccountId          String?            @unique
+  stripeConnectOnboardingComplete Boolean            @default(false)
+  freeDocumentCreationsUsed       Int                @default(0)
+  createdAt                       DateTime           @default(now())
+  updatedAt                       DateTime           @updatedAt
+  memberships                     Membership[]
+  customers                       Customer[]
+  jobs                            Job[]
+  estimates                       Estimate[]
+  proposals                       Proposal[]
+  payments                        Payment[]
+  subscription                    Subscription?
+  documentCreations               DocumentCreation[]
+  auditLogs                       AuditLog[]
+
+  @@index([name])
+}
+
+model Membership {
+  id        String     @id @default(cuid())
+  userId    String
+  companyId String
+  role      MemberRole @default(ESTIMATOR)
+  createdAt DateTime   @default(now())
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company   Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, companyId])
+  @@index([companyId, role])
+}
+
+model Customer {
+  id         String   @id @default(cuid())
+  companyId  String
+  firstName  String
+  lastName   String?
+  email      String?
+  phone      String?
+  address1   String?
+  address2   String?
+  city       String?
+  state      String?
+  postalCode String?
+  notes      String?  @db.Text
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  company    Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  jobs       Job[]
+
+  @@index([companyId, lastName, firstName])
+  @@index([companyId, email])
+}
+
+model Job {
+  id           String     @id @default(cuid())
+  companyId    String
+  customerId   String
+  title        String
+  description  String?    @db.Text
+  address      String?
+  status       JobStatus  @default(DRAFT)
+  scheduledFor DateTime?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  company      Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  customer     Customer   @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  assets       Asset[]
+  estimates    Estimate[]
+
+  @@index([companyId, status, updatedAt])
+  @@index([customerId])
+}
+
+model Asset {
+  id               String    @id @default(cuid())
+  companyId        String
+  jobId            String?
+  estimateId       String?
+  type             AssetType
+  storageKey       String
+  originalFileName String?
+  contentType      String?
+  sizeBytes        Int?
+  durationSeconds  Int?
+  transcription    String?   @db.Text
+  createdAt        DateTime  @default(now())
+  job              Job?      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  estimate         Estimate? @relation(fields: [estimateId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, type])
+  @@index([jobId])
+  @@index([estimateId])
+}
+
+model Estimate {
+  id                     String         @id @default(cuid())
+  companyId              String
+  jobId                  String?
+  createdById            String?
+  number                 Int
+  title                  String
+  scopeOfWork            String         @db.Text
+  assumptions            String?        @db.Text
+  exclusions             String?        @db.Text
+  status                 EstimateStatus @default(DRAFT)
+  currency               String         @default("usd")
+  materialSubtotalCents  Int            @default(0)
+  laborSubtotalCents     Int            @default(0)
+  equipmentSubtotalCents Int            @default(0)
+  disposalSubtotalCents  Int            @default(0)
+  otherSubtotalCents     Int            @default(0)
+  markupCents            Int            @default(0)
+  taxCents               Int            @default(0)
+  totalCents             Int            @default(0)
+  validUntil             DateTime?
+  aiMetadata             Json?
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime       @updatedAt
+  company                Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  job                    Job?           @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  createdBy              User?          @relation("EstimateCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  items                  EstimateItem[]
+  assets                 Asset[]
+  proposal               Proposal?
+
+  @@unique([companyId, number])
+  @@index([companyId, status, updatedAt])
+  @@index([jobId])
+}
+
+model EstimateItem {
+  id             String               @id @default(cuid())
+  estimateId     String
+  category       EstimateItemCategory
+  description    String
+  quantity       Decimal              @db.Decimal(12, 2)
+  unit           String               @default("each")
+  unitCostCents  Int                  @default(0)
+  unitPriceCents Int                  @default(0)
+  taxable        Boolean              @default(false)
+  sortOrder      Int                  @default(0)
+  metadata       Json?
+  estimate       Estimate             @relation(fields: [estimateId], references: [id], onDelete: Cascade)
+
+  @@index([estimateId, sortOrder])
+}
+
+model Proposal {
+  id                 String         @id @default(cuid())
+  companyId          String
+  estimateId         String         @unique
+  publicToken        String         @unique @default(cuid())
+  status             ProposalStatus @default(DRAFT)
+  message            String?        @db.Text
+  terms              String?        @db.Text
+  depositAmountCents Int?
+  sentAt             DateTime?
+  viewedAt           DateTime?
+  acceptedAt         DateTime?
+  acceptedByName     String?
+  acceptedByEmail    String?
+  declinedAt         DateTime?
+  expiresAt          DateTime?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  company            Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  estimate           Estimate       @relation(fields: [estimateId], references: [id], onDelete: Cascade)
+  payments           Payment[]
+
+  @@index([companyId, status, updatedAt])
+}
+
+model Payment {
+  id                      String        @id @default(cuid())
+  companyId               String
+  proposalId              String
+  type                    PaymentType   @default(DEPOSIT)
+  status                  PaymentStatus @default(PENDING)
+  amountCents             Int
+  currency                String        @default("usd")
+  stripeCheckoutSessionId String?       @unique
+  stripePaymentIntentId   String?       @unique
+  paidAt                  DateTime?
+  createdAt               DateTime      @default(now())
+  updatedAt               DateTime      @updatedAt
+  company                 Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  proposal                Proposal      @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, status, createdAt])
+  @@index([proposalId, status])
+}
+
+model Subscription {
+  id                   String             @id @default(cuid())
+  companyId            String             @unique
+  stripeSubscriptionId String?            @unique
+  stripePriceId        String?
+  plan                 BillingPlan        @default(FREE)
+  status               SubscriptionStatus @default(INCOMPLETE)
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean            @default(false)
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  company              Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+}
+
+/**
+ * Immutable, idempotent audit of a proposal or invoice created by a company.
+ * `sourceId` is the persisted document ID when available, otherwise a stable
+ * content fingerprint supplied by the creation endpoint.
+ */
+model DocumentCreation {
+  id                   String       @id @default(cuid())
+  companyId            String
+  kind                 DocumentKind
+  sourceId             String
+  createdById          String?
+  consumedFreeCreation Boolean      @default(false)
+  metadata             Json?
+  createdAt            DateTime     @default(now())
+  company              Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, kind, sourceId])
+  @@index([companyId, createdAt])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  companyId String
+  actorId   String?
+  action    String
+  entity    String
+  entityId  String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  actor     User?    @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, createdAt])
+  @@index([entity, entityId])
+}
