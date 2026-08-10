@@ -27,7 +27,7 @@ export async function POST(request: Request) {
       data: { companyId: company.id, submittedById: user.id, kind: body.kind as FeedbackKind, title: stringField(body.title, "title", { max: 160 })!, details: stringField(body.details, "details", { max: 4000 })!, pageUrl },
       select: { id: true, status: true, createdAt: true },
     });
-    await prisma.auditLog.create({ data: { companyId: company.id, actorId: user.id, action: "FEEDBACK_SUBMITTED", entity: "FeedbackSubmission", entityId: feedback.id, metadata: { kind: feedback.status } } });
+    await prisma.auditLog.create({ data: { companyId: company.id, actorId: user.id, action: "FEEDBACK_SUBMITTED", entity: "FeedbackSubmission", entityId: feedback.id, metadata: { kind: body.kind } } });
     return NextResponse.json({ feedback, message: "Feedback submitted for review." }, { status: 201 });
   } catch (error) { return errorResponse(error); }
 }
