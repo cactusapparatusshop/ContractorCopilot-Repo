@@ -13,6 +13,7 @@ export type AuthUser = {
   companyId?: string;
   role?: "OWNER" | "ADMIN" | "ESTIMATOR" | "TECHNICIAN" | "VIEWER";
   isDemo?: boolean;
+  unlimitedProAccess?: boolean;
   sessionVersion?: number;
 };
 
@@ -154,10 +155,10 @@ async function validateStoredUser(user: AuthUser) {
   if (!prisma) return null;
   const stored = await prisma.user.findUnique({
     where: { id: user.id },
-    select: { email: true, name: true, sessionVersion: true },
+    select: { email: true, name: true, sessionVersion: true, unlimitedProAccess: true },
   });
   if (!stored || stored.sessionVersion !== user.sessionVersion) return null;
-  return { ...user, email: stored.email, name: stored.name, sessionVersion: stored.sessionVersion } satisfies AuthUser;
+  return { ...user, email: stored.email, name: stored.name, sessionVersion: stored.sessionVersion, unlimitedProAccess: stored.unlimitedProAccess } satisfies AuthUser;
 }
 
 /**

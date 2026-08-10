@@ -13,6 +13,7 @@ export type DocumentCreationKind = "PROPOSAL" | "INVOICE";
 export type BillingState = {
   companyId: string;
   plan: "demo" | "free" | "pro";
+  complimentaryAccess: boolean;
   freeDocumentCreationLimit: number;
   freeDocumentCreationsUsed: number;
   freeDocumentCreationsRemaining: number | null;
@@ -47,6 +48,7 @@ function demoBillingState(): BillingState {
   return {
     companyId: "demo-company",
     plan: "demo",
+    complimentaryAccess: false,
     freeDocumentCreationLimit: FREE_DOCUMENT_CREATION_LIMIT,
     freeDocumentCreationsUsed: 0,
     freeDocumentCreationsRemaining: null,
@@ -61,12 +63,13 @@ export async function getBillingState(user: AuthUser): Promise<BillingState> {
     where: { companyId: company.id },
     select: { status: true, plan: true, stripeSubscriptionId: true, stripePriceId: true },
   });
-  const plan = isActivePro(subscription) ? "pro" : "free";
+  const plan = user.unlimitedProAccess || isActivePro(subscription) ? "pro" : "free";
   const used = Math.min(Math.max(company.freeDocumentCreationsUsed, 0), FREE_DOCUMENT_CREATION_LIMIT);
 
   return {
     companyId: company.id,
     plan,
+    complimentaryAccess: user.unlimitedProAccess === true,
     freeDocumentCreationLimit: FREE_DOCUMENT_CREATION_LIMIT,
     freeDocumentCreationsUsed: used,
     freeDocumentCreationsRemaining: plan === "pro" ? null : remainingFreeCreations(used),
@@ -128,11 +131,12 @@ export async function claimDocumentCreation(
           where: { companyId: company.id },
           select: { status: true, plan: true, stripeSubscriptionId: true, stripePriceId: true },
         });
-        const plan = isActivePro(subscription) ? "pro" : "free";
+        const plan = user.unlimitedProAccess || isActivePro(subscription) ? "pro" : "free";
         const used = Math.min(Math.max(currentCompany.freeDocumentCreationsUsed, 0), FREE_DOCUMENT_CREATION_LIMIT);
         return {
           companyId: company.id,
           plan,
+          complimentaryAccess: user.unlimitedProAccess === true,
           freeDocumentCreationLimit: FREE_DOCUMENT_CREATION_LIMIT,
           freeDocumentCreationsUsed: used,
           freeDocumentCreationsRemaining: plan === "pro" ? null : remainingFreeCreations(used),
@@ -146,7 +150,7 @@ export async function claimDocumentCreation(
         where: { companyId: company.id },
         select: { status: true, plan: true, stripeSubscriptionId: true, stripePriceId: true },
       });
-      const isPro = isActivePro(subscription);
+      const isPro = user.unlimitedProAccess || isActivePro(subscription);
       let consumedFreeCreation = false;
 
       if (!isPro) {
@@ -182,6 +186,7 @@ export async function claimDocumentCreation(
       return {
         companyId: company.id,
         plan: isPro ? "pro" : "free",
+        complimentaryAccess: user.unlimitedProAccess === true,
         freeDocumentCreationLimit: FREE_DOCUMENT_CREATION_LIMIT,
         freeDocumentCreationsUsed: used,
         freeDocumentCreationsRemaining: isPro ? null : remainingFreeCreations(used),
