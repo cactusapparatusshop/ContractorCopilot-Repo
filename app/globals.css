@@ -788,6 +788,12 @@ body::selection { background: rgba(255, 101, 53, .23); }
 .feedback-review-controls { display: grid; grid-template-columns: 125px minmax(0, 1fr) auto; gap: 8px; }
 .feedback-review-controls select, .feedback-review-controls input { min-width: 0; border: 1px solid #dfe7ea; border-radius: 8px; padding: 8px 9px; background: #fff; color: var(--ink); font: inherit; font-size: 10px; }
 
+.job-delete-wrap { position: relative; display: inline-flex; }
+.job-delete-button { color: #c85636; }
+.job-delete-button:hover { border-color: #edb9a8; background: #fff6f3; color: #a93e22; }
+.job-delete-button:disabled { cursor: wait; opacity: .6; }
+.job-delete-error { position: absolute; z-index: 6; right: 0; top: calc(100% + 7px); width: 205px; padding: 8px 9px; border: 1px solid #f0c5b8; border-radius: 8px; background: #fff8f5; color: #a9472b; font-size: 10px; line-height: 1.4; box-shadow: 0 8px 20px rgba(85,30,18,.12); }
+
 @media (max-width: 820px) {
   .feedback-page-grid { grid-template-columns: 1fr; }
   .proposal-layout-options { grid-template-columns: 1fr; }
