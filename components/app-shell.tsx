@@ -2,47 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  Bell,
-  BriefcaseBusiness,
-  ChevronDown,
-  CreditCard,
-  FileText,
-  HardHat,
-  HelpCircle,
-  LayoutDashboard,
-  LogOut,
-  Menu,
-  Plus,
-  Search,
-  Settings,
-  ShieldCheck,
-  MessageSquarePlus,
-  Users,
-  X,
-} from "lucide-react";
-import { useState } from "react";
+import { Bell, BriefcaseBusiness, ChevronDown, CreditCard, FileText, HardHat, HelpCircle, LayoutDashboard, LogOut, Menu, MessageSquarePlus, Plus, Search, Settings, ShieldCheck, Users, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
-export type WorkspaceShellViewer = {
-  name?: string | null;
-  email: string;
-  initials: string;
-  isPlatformAdmin?: boolean;
-};
+export type WorkspaceShellViewer = { name?: string | null; email: string; initials: string; isPlatformAdmin?: boolean };
+export type WorkspaceShellCompany = { name: string; notificationsEnabled: boolean } | null;
 
-export type WorkspaceShellCompany = {
-  name: string;
-  notificationsEnabled: boolean;
-} | null;
-
-const iconMap = {
-  layout: LayoutDashboard,
-  hardhat: HardHat,
-  file: FileText,
-  users: Users,
-  credit: CreditCard,
-};
-
+const iconMap = { layout: LayoutDashboard, hardhat: HardHat, file: FileText, users: Users, credit: CreditCard };
 const primary = [
   { label: "Overview", href: "/dashboard", icon: "layout" as const },
   { label: "Jobs", href: "/jobs", icon: "hardhat" as const },
@@ -59,23 +25,9 @@ function SidebarNav({ viewer, company, onNavigate }: { viewer: WorkspaceShellVie
   const pathname = usePathname();
   return <>
     <Link className="brand" href="/dashboard" onClick={onNavigate}><span className="brand-mark">C</span>ContractorCopilot</Link>
-    <div className="sidebar-group">
-      <span className="sidebar-label">Workspace</span>
-      {primary.map((item) => {
-        const Icon = iconMap[item.icon];
-        return <Link key={item.label} href={item.href} onClick={onNavigate} className={`nav-link ${isCurrentRoute(pathname, item.href) ? "active" : ""}`}><Icon />{item.label}</Link>;
-      })}
-    </div>
-    <div className="sidebar-group" style={{ marginTop: 22 }}>
-      <span className="sidebar-label">Manage</span>
-      <Link href="/settings" onClick={onNavigate} className={`nav-link ${isCurrentRoute(pathname, "/settings") ? "active" : ""}`}><Settings />Settings</Link>
-      <Link href="/feedback" onClick={onNavigate} className={`nav-link ${isCurrentRoute(pathname, "/feedback") ? "active" : ""}`}><MessageSquarePlus />Feedback</Link>
-      {viewer.isPlatformAdmin && <Link href="/admin" onClick={onNavigate} className={`nav-link ${isCurrentRoute(pathname, "/admin") ? "active" : ""}`}><ShieldCheck />Platform admin</Link>}
-    </div>
-    <div className="sidebar-bottom">
-      <div className="help-card"><b>Need a hand?</b><p>Guided setup makes your next quote the fastest one yet.</p><a href="mailto:support@contractorcopilot.com">Visit help center →</a></div>
-      <Link href="/settings" className="user-mini" onClick={onNavigate}><span className="avatar">{viewer.initials}</span><span><b>{viewer.name || viewer.email}</b><small>{company?.name || "Your workspace"}</small></span><ChevronDown size={14} style={{ marginLeft: "auto", color: "#91a7ab" }} /></Link>
-    </div>
+    <div className="sidebar-group"><span className="sidebar-label">Workspace</span>{primary.map((item) => { const Icon = iconMap[item.icon]; return <Link key={item.label} href={item.href} onClick={onNavigate} className={`nav-link ${isCurrentRoute(pathname, item.href) ? "active" : ""}`}><Icon />{item.label}</Link>; })}</div>
+    <div className="sidebar-group" style={{ marginTop: 22 }}><span className="sidebar-label">Manage</span><Link href="/settings" onClick={onNavigate} className={`nav-link ${isCurrentRoute(pathname, "/settings") ? "active" : ""}`}><Settings />Settings</Link><Link href="/feedback" onClick={onNavigate} className={`nav-link ${isCurrentRoute(pathname, "/feedback") ? "active" : ""}`}><MessageSquarePlus />Feedback</Link>{viewer.isPlatformAdmin && <Link href="/admin" onClick={onNavigate} className={`nav-link ${isCurrentRoute(pathname, "/admin") ? "active" : ""}`}><ShieldCheck />Platform admin</Link>}</div>
+    <div className="sidebar-bottom"><div className="help-card"><b>Need a hand?</b><p>Guided setup makes your next quote the fastest one yet.</p><a href="mailto:support@contractorcopilot.com">Visit help center →</a></div><Link href="/settings" className="user-mini" onClick={onNavigate}><span className="avatar">{viewer.initials}</span><span><b>{viewer.name || viewer.email}</b><small>{company?.name || "Your workspace"}</small></span><ChevronDown size={14} style={{ marginLeft: "auto", color: "#91a7ab" }} /></Link></div>
   </>;
 }
 
@@ -85,16 +37,7 @@ export function Sidebar({ viewer, company }: { viewer: WorkspaceShellViewer; com
 
 function SignOutButton() {
   const [pending, setPending] = useState(false);
-
-  async function signOut() {
-    setPending(true);
-    try {
-      await fetch("/api/auth/sign-out", { method: "POST" });
-    } finally {
-      window.location.assign("/sign-in");
-    }
-  }
-
+  async function signOut() { setPending(true); try { await fetch("/api/auth/sign-out", { method: "POST" }); } finally { window.location.assign("/sign-in"); } }
   return <button type="button" className="button button-outline button-sm" onClick={signOut} disabled={pending} aria-label="Log out"><LogOut size={14} />{pending ? "Logging out…" : "Log out"}</button>;
 }
 
@@ -102,61 +45,39 @@ function NotificationButton({ initialEnabled }: { initialEnabled: boolean }) {
   const [open, setOpen] = useState(false);
   const [enabled, setEnabled] = useState(initialEnabled);
   const [saving, setSaving] = useState(false);
+  async function toggleNotifications() { const next = !enabled; setSaving(true); try { const response = await fetch("/api/settings", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ section: "notifications", notificationsEnabled: next }) }); if (!response.ok) throw new Error(); setEnabled(next); } finally { setSaving(false); } }
+  return <div style={{ position: "relative" }}><button className="icon-button" aria-label="Notifications" aria-expanded={open} onClick={() => setOpen((current) => !current)}><Bell /></button>{open && <div className="topbar-popover" role="dialog" aria-label="Notifications"><div className="topbar-popover-heading"><b>Notifications</b><button className="button button-ghost button-sm" onClick={() => setOpen(false)}>Close</button></div><p>{enabled ? "You’re all caught up. New proposal activity will appear here." : "Notifications are paused for this workspace."}</p><button type="button" className="button button-outline button-sm" onClick={toggleNotifications} disabled={saving} style={{ width: "100%" }}>{saving ? "Saving…" : enabled ? "Pause notifications" : "Turn on notifications"}</button></div>}</div>;
+}
 
-  async function toggleNotifications() {
-    const next = !enabled;
-    setSaving(true);
-    try {
-      const response = await fetch("/api/settings", {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ section: "notifications", notificationsEnabled: next }),
-      });
-      if (!response.ok) throw new Error();
-      setEnabled(next);
-    } finally {
-      setSaving(false);
-    }
-  }
+type SearchResult = { id: string; type: "JOB" | "PROPOSAL" | "CUSTOMER"; title: string; detail?: string; href: string };
 
-  return <div style={{ position: "relative" }}>
-    <button className="icon-button" aria-label="Notifications" aria-expanded={open} onClick={() => setOpen((current) => !current)}><Bell /></button>
-    {open && <div className="topbar-popover" role="dialog" aria-label="Notifications">
-      <div className="topbar-popover-heading"><b>Notifications</b><button className="button button-ghost button-sm" onClick={() => setOpen(false)}>Close</button></div>
-      <p>{enabled ? "You’re all caught up. New proposal activity will appear here." : "Notifications are paused for this workspace."}</p>
-      <button type="button" className="button button-outline button-sm" onClick={toggleNotifications} disabled={saving} style={{ width: "100%" }}>{saving ? "Saving…" : enabled ? "Pause notifications" : "Turn on notifications"}</button>
-    </div>}
-  </div>;
+function WorkspaceSearch() {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [searching, setSearching] = useState(false);
+  const searchInput = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    const trimmed = query.trim();
+    if (trimmed.length < 2) { setResults([]); setSearching(false); return; }
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      setSearching(true);
+      try { const response = await fetch(`/api/search?q=${encodeURIComponent(trimmed)}`, { credentials: "same-origin", signal: controller.signal, cache: "no-store" }); const data = await response.json().catch(() => ({})); if (!response.ok) throw new Error(data.error ?? "Search is unavailable."); setResults(Array.isArray(data.results) ? data.results : []); } catch (error) { if ((error as Error).name !== "AbortError") setResults([]); } finally { if (!controller.signal.aborted) setSearching(false); }
+    }, 220);
+    return () => { controller.abort(); window.clearTimeout(timer); };
+  }, [query]);
+  useEffect(() => { const focusSearch = (event: KeyboardEvent) => { if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") { event.preventDefault(); searchInput.current?.focus(); } if (event.key === "Escape") setQuery(""); }; window.addEventListener("keydown", focusSearch); return () => window.removeEventListener("keydown", focusSearch); }, []);
+  const icon = (type: SearchResult["type"]) => type === "JOB" ? <HardHat size={15} /> : type === "PROPOSAL" ? <FileText size={15} /> : <Users size={15} />;
+  return <div className="global-search"><label className="search-box"><Search size={15} /><input ref={searchInput} aria-label="Search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search jobs, customers, or proposals…" /><kbd>⌘ K</kbd></label>{query.trim().length >= 2 && <div className="search-results" role="listbox" aria-label="Search results">{searching ? <p>Searching workspace…</p> : results.length ? results.map((result) => <Link key={`${result.type}-${result.id}`} href={result.href} role="option" className="search-result" onClick={() => setQuery("")}><span>{icon(result.type)}</span><span><b>{result.title}</b>{result.detail && <small>{result.detail}</small>}</span><em>{result.type === "JOB" ? "Job" : result.type === "PROPOSAL" ? "Proposal" : "Customer"}</em></Link>) : <p>No jobs, proposals, or customers match “{query.trim()}”.</p>}</div>}</div>;
 }
 
 export function Topbar({ viewer, company }: { viewer: WorkspaceShellViewer; company: WorkspaceShellCompany }) {
   const [open, setOpen] = useState(false);
-  return <>
-    <header className="topbar">
-      <button className="icon-button mobile-menu" aria-label="Open navigation" onClick={() => setOpen(true)}><Menu /></button>
-      <label className="search-box"><Search size={15} /><input aria-label="Search" placeholder="Search jobs, customers, or proposals…" /><kbd>⌘ K</kbd></label>
-      <div className="topbar-actions"><NotificationButton initialEnabled={company?.notificationsEnabled ?? true} /><span className="topbar-user" title={viewer.email}><span className="avatar">{viewer.initials}</span><span>{viewer.name || "Account"}</span></span><SignOutButton /><Link href="/jobs/new" className="button button-primary button-sm"><Plus size={15} /> New proposal</Link></div>
-    </header>
-    {open && <div className="mobile-drawer" role="dialog" aria-modal="true"><div className="mobile-drawer-panel"><button className="icon-button" onClick={() => setOpen(false)} aria-label="Close navigation" style={{ position: "absolute", top: 18, right: 16 }}><X /></button><SidebarNav viewer={viewer} company={company} onNavigate={() => setOpen(false)} /><div style={{ marginTop: "auto", padding: 12 }}><SignOutButton /></div></div><button className="mobile-drawer-backdrop" aria-label="Close navigation" onClick={() => setOpen(false)} /></div>}
-  </>;
+  return <><header className="topbar"><button className="icon-button mobile-menu" aria-label="Open navigation" onClick={() => setOpen(true)}><Menu /></button><WorkspaceSearch /><div className="topbar-actions"><NotificationButton initialEnabled={company?.notificationsEnabled ?? true} /><span className="topbar-user" title={viewer.email}><span className="avatar">{viewer.initials}</span><span>{viewer.name || "Account"}</span></span><SignOutButton /><Link href="/jobs/new" className="button button-primary button-sm"><Plus size={15} /> New proposal</Link></div></header>{open && <div className="mobile-drawer" role="dialog" aria-modal="true"><div className="mobile-drawer-panel"><button className="icon-button" onClick={() => setOpen(false)} aria-label="Close navigation" style={{ position: "absolute", top: 18, right: 16 }}><X /></button><SidebarNav viewer={viewer} company={company} onNavigate={() => setOpen(false)} /><div style={{ marginTop: "auto", padding: 12 }}><SignOutButton /></div></div><button className="mobile-drawer-backdrop" aria-label="Close navigation" onClick={() => setOpen(false)} /></div>}</>;
 }
 
-export function AppShell({ children, viewer, company }: { children: React.ReactNode; viewer: WorkspaceShellViewer; company: WorkspaceShellCompany }) {
-  return <div className="app-shell"><Sidebar viewer={viewer} company={company} /><section className="workspace"><Topbar viewer={viewer} company={company} /><main className="workspace-content">{children}</main></section></div>;
-}
-
-export function PageHeader({ title, subtitle, children }: { title: string; subtitle: string; children?: React.ReactNode }) {
-  return <div className="page-header"><div><h1>{title}</h1><p>{subtitle}</p></div>{children && <div className="page-actions">{children}</div>}</div>;
-}
-
-export function MiniProductMark() {
-  return <span className="proposal-brand"><i>C</i>ContractorCopilot</span>;
-}
-
-export function JobIcon() {
-  return <BriefcaseBusiness size={16} />;
-}
-
-export function HelpLink() {
-  return <a className="text-link" href="mailto:support@contractorcopilot.com"><HelpCircle size={13} style={{ verticalAlign: "-2px" }} /> Get help</a>;
-}
+export function AppShell({ children, viewer, company }: { children: React.ReactNode; viewer: WorkspaceShellViewer; company: WorkspaceShellCompany }) { return <div className="app-shell"><Sidebar viewer={viewer} company={company} /><section className="workspace"><Topbar viewer={viewer} company={company} /><main className="workspace-content">{children}</main></section></div>; }
+export function PageHeader({ title, subtitle, children }: { title: string; subtitle: string; children?: React.ReactNode }) { return <div className="page-header"><div><h1>{title}</h1><p>{subtitle}</p></div>{children && <div className="page-actions">{children}</div>}</div>; }
+export function MiniProductMark() { return <span className="proposal-brand"><i>C</i>ContractorCopilot</span>; }
+export function JobIcon() { return <BriefcaseBusiness size={16} />; }
+export function HelpLink() { return <a className="text-link" href="mailto:support@contractorcopilot.com"><HelpCircle size={13} style={{ verticalAlign: "-2px" }} /> Get help</a>; }

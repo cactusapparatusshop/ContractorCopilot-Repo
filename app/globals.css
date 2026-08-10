@@ -791,8 +791,22 @@ body::selection { background: rgba(255, 101, 53, .23); }
 .feedback-review-meta small { color: var(--ink-faint); font-size: 10px; }
 .feedback-review-item > p { margin: 0; color: var(--ink-soft); font-size: 11px; line-height: 1.55; }
 .feedback-review-item > .text-link { font-size: 10px; }
-.feedback-review-controls { display: grid; grid-template-columns: 125px minmax(0, 1fr) auto; gap: 8px; }
+.feedback-review-controls { display: grid; grid-template-columns: 125px minmax(0, 1fr) auto auto; gap: 8px; }
 .feedback-review-controls select, .feedback-review-controls input { min-width: 0; border: 1px solid #dfe7ea; border-radius: 8px; padding: 8px 9px; background: #fff; color: var(--ink); font: inherit; font-size: 10px; }
+.feedback-review-message { display: inline-flex; align-items: center; gap: 6px; margin: 0; color: var(--teal); font-size: 10px; font-weight: 700; }
+.feedback-review-message.error { color: #b14d35; }
+.global-search { position: relative; width: min(390px, 40vw); }
+.global-search .search-box { width: 100%; }
+.search-results { position: absolute; z-index: 25; top: calc(100% + 8px); left: 0; width: min(480px, calc(100vw - 32px)); overflow: hidden; border: 1px solid #dce5e9; border-radius: 12px; background: #fff; box-shadow: 0 18px 38px rgba(13, 34, 44, .16); }
+.search-results > p { margin: 0; padding: 14px 15px; color: var(--ink-soft); font-size: 11px; }
+.search-result { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: 9px; padding: 11px 13px; border-bottom: 1px solid #edf1f3; color: inherit; text-decoration: none; }
+.search-result:last-child { border-bottom: 0; }
+.search-result:hover { background: #f7fafb; }
+.search-result > span:first-child { display: grid; width: 28px; height: 28px; place-items: center; border-radius: 8px; background: var(--teal-soft); color: var(--teal); }
+.search-result b, .search-result small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.search-result b { font-size: 11px; }
+.search-result small { margin-top: 2px; color: var(--ink-faint); font-size: 10px; }
+.search-result em { color: var(--ink-faint); font-size: 9px; font-style: normal; font-weight: 700; }
 
 .job-delete-wrap { position: relative; display: inline-flex; }
 .job-delete-button { color: #c85636; }
@@ -809,4 +823,5 @@ body::selection { background: rgba(255, 101, 53, .23); }
   .proposal-layout-options { grid-template-columns: 1fr; }
   .proposal-layout-option small { min-height: 0; }
   .feedback-review-controls { grid-template-columns: 1fr; }
+  .global-search { width: auto; }
 }

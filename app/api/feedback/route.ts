@@ -41,7 +41,7 @@ export async function PATCH(request: Request) {
     const id = stringField(body.id, "id", { max: 80 })!;
     if (typeof body.status !== "string" || !statuses.has(body.status)) throw new HttpError(400, "INVALID_REQUEST", "Choose a valid review status.");
     const adminNotes = stringField(body.adminNotes, "adminNotes", { required: false, max: 4000 });
-    const updated = await prisma.feedbackSubmission.update({ where: { id }, data: { status: body.status as FeedbackStatus, adminNotes }, select: { id: true, status: true, adminNotes: true, updatedAt: true, companyId: true } });
+    const updated = await prisma.feedbackSubmission.update({ where: { id }, data: { status: body.status as FeedbackStatus, adminNotes: adminNotes ?? null }, select: { id: true, status: true, adminNotes: true, updatedAt: true, companyId: true } });
     await prisma.auditLog.create({ data: { companyId: updated.companyId, actorId: user.id, action: "FEEDBACK_REVIEWED", entity: "FeedbackSubmission", entityId: updated.id, metadata: { status: updated.status } } });
     return NextResponse.json({ feedback: updated });
   } catch (error) { return errorResponse(error); }

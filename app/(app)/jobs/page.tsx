@@ -11,18 +11,19 @@ import { viewerInitials } from "@/lib/workspace";
 
 export const dynamic = "force-dynamic";
 
-export default async function JobsPage() {
+export default async function JobsPage({ searchParams }: { searchParams: Promise<{ search?: string }> }) {
   const user = await requireUser();
   const company = user.isDemo || !prisma ? null : await getCompanyForUser(user.id, user.companyId);
+  const search = (await searchParams).search?.trim().slice(0, 100);
   const jobs = company ? await prisma!.job.findMany({
-    where: { companyId: company.id },
+    where: { companyId: company.id, ...(search ? { OR: [{ id: search }, { title: { contains: search, mode: "insensitive" } }, { description: { contains: search, mode: "insensitive" } }, { address: { contains: search, mode: "insensitive" } }, { customer: { is: { OR: [{ firstName: { contains: search, mode: "insensitive" } }, { lastName: { contains: search, mode: "insensitive" } }, { email: { contains: search, mode: "insensitive" } }] } } }] } : {}) },
     include: { customer: true, estimates: { orderBy: { updatedAt: "desc" }, take: 1, include: { proposal: true } } },
     orderBy: { updatedAt: "desc" },
   }) : [];
   return <>
     <PageHeader title="Jobs" subtitle="All your walkthroughs, scopes, and proposals in one private workspace."><Link href="/jobs/new" className="button button-primary"><Plus size={15} /> Create proposal</Link></PageHeader>
     <section className="card" style={{ overflow: "hidden" }}>
-      <div className="list-toolbar"><span><HardHat size={15} /> {jobs.length} job{jobs.length === 1 ? "" : "s"}</span><span><CalendarDays size={14} /> Ordered by most recently updated</span></div>
+      <div className="list-toolbar"><span><HardHat size={15} /> {jobs.length} job{jobs.length === 1 ? "" : "s"}{search ? ` matching “${search}”` : ""}</span><span><CalendarDays size={14} /> Ordered by most recently updated</span></div>
       {jobs.length ? <div className="table-wrap"><table className="data-table"><thead><tr><th>Job</th><th>Client</th><th>Address</th><th>Proposal</th><th>Status</th><th>Updated</th><th /><th /></tr></thead><tbody>{jobs.map((job) => {
         const estimate = job.estimates[0];
         const client = [job.customer.firstName, job.customer.lastName].filter(Boolean).join(" ");

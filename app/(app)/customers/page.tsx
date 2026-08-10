@@ -9,11 +9,12 @@ import { viewerInitials } from "@/lib/workspace";
 
 export const dynamic = "force-dynamic";
 
-export default async function CustomersPage() {
+export default async function CustomersPage({ searchParams }: { searchParams: Promise<{ search?: string }> }) {
   const user = await requireUser();
   const company = user.isDemo || !prisma ? null : await getCompanyForUser(user.id, user.companyId);
+  const search = (await searchParams).search?.trim().slice(0, 100);
   const customers = company ? await prisma!.customer.findMany({
-    where: { companyId: company.id },
+    where: { companyId: company.id, ...(search ? { OR: [{ id: search }, { firstName: { contains: search, mode: "insensitive" } }, { lastName: { contains: search, mode: "insensitive" } }, { email: { contains: search, mode: "insensitive" } }, { phone: { contains: search, mode: "insensitive" } }, { address1: { contains: search, mode: "insensitive" } }, { city: { contains: search, mode: "insensitive" } }] } : {}) },
     include: { jobs: { include: { estimates: { select: { id: true, totalCents: true, status: true }, orderBy: { updatedAt: "desc" } } }, orderBy: { updatedAt: "desc" } } },
     orderBy: { updatedAt: "desc" },
   }) : [];
