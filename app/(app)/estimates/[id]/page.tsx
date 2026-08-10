@@ -23,7 +23,7 @@ export default async function EstimateDetailPage({ params }: { params: Promise<{
   if (!company) notFound();
   const estimate = await prisma!.estimate.findFirst({
     where: { id, companyId: company.id },
-    include: { company: true, job: { include: { customer: true } }, items: { orderBy: { sortOrder: "asc" } }, proposal: true },
+    include: { company: true, job: { include: { customer: true, assets: { where: { type: "PHOTO" }, orderBy: { createdAt: "asc" }, take: 4 } } }, items: { orderBy: { sortOrder: "asc" } }, proposal: true },
   });
   if (!estimate) notFound();
   const customer = estimate.job?.customer;
@@ -41,6 +41,7 @@ export default async function EstimateDetailPage({ params }: { params: Promise<{
     subtotal: (estimate.materialSubtotalCents + estimate.laborSubtotalCents + estimate.equipmentSubtotalCents + estimate.disposalSubtotalCents + estimate.otherSubtotalCents) / 100,
     tax: estimate.taxCents / 100, total, scope: estimate.scopeOfWork, terms: proposal?.terms,
     lines: estimate.items.map((item) => ({ item: item.description, quantity: `${Number(item.quantity)} ${item.unit}`, amount: Math.round(Number(item.quantity) * item.unitPriceCents) / 100 })),
+    photos: (estimate.job?.assets ?? []).map((asset) => ({ src: asset.storageKey, caption: asset.caption ?? asset.originalFileName ?? "Jobsite photo" })).filter((photo) => photo.src.startsWith("data:image/")),
   };
   const status = proposal?.status ?? estimate.status;
   return <>

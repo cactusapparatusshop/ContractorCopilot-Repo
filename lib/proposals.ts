@@ -8,6 +8,7 @@ import { demoPublicProposal } from "@/lib/demo-proposal";
 import { HttpError, integerField, requireObject, stringField } from "@/lib/http";
 import type { ProposalPdfData, ProposalPdfLineItem } from "@/lib/pdf";
 import { isProposalLayout, type ProposalLayout } from "@/lib/proposal-layouts";
+import { proposalPhoto } from "@/lib/jobsite-photos";
 
 function listOfStrings(value: unknown, field: string, maximumItems = 12, maximumLength = 600) {
   if (value === undefined || value === null) return undefined;
@@ -99,7 +100,7 @@ export async function proposalPdfDataForUser(proposalId: string, userId: string)
       estimate: {
         include: {
           items: { orderBy: { sortOrder: "asc" } },
-          job: { include: { customer: true } },
+          job: { include: { customer: true, assets: { where: { type: "PHOTO" }, orderBy: { createdAt: "asc" }, take: 4 } } },
         },
       },
     },
@@ -141,6 +142,9 @@ export async function proposalPdfDataForUser(proposalId: string, userId: string)
     depositAmountCents: proposal.depositAmountCents ?? undefined,
     currency: proposal.estimate.currency,
     layout: proposal.layout,
+    photos: (proposal.estimate.job?.assets ?? [])
+      .map((asset) => proposalPhoto(asset.storageKey, asset.caption))
+      .filter((photo): photo is { src: string; caption: string } => Boolean(photo)),
   };
 }
 
@@ -165,6 +169,7 @@ export type PublicProposalData = {
   totals: { subtotalCents: number; markupCents: number; taxCents: number; totalCents: number; currency: string };
   depositAmountCents?: number | null;
   layout: ProposalLayout;
+  photos: { src: string; caption: string }[];
   demo: boolean;
 };
 
@@ -190,6 +195,7 @@ export async function publicProposalDataForToken(token: string): Promise<PublicP
       totals: { subtotalCents: demo.totals.subtotalCents ?? 0, markupCents: 0, taxCents: demo.totals.taxCents ?? 0, totalCents: demo.totals.totalCents ?? 0, currency: demo.totals.currency ?? "usd" },
       depositAmountCents: demo.depositAmountCents,
       layout: "CLEAN",
+      photos: [],
       demo: true,
     };
   }
@@ -198,7 +204,7 @@ export async function publicProposalDataForToken(token: string): Promise<PublicP
     where: { publicToken: token },
     include: {
       company: { select: { name: true, email: true, phone: true, address: true } },
-      estimate: { include: { items: { orderBy: { sortOrder: "asc" } }, job: { include: { customer: true } } } },
+      estimate: { include: { items: { orderBy: { sortOrder: "asc" } }, job: { include: { customer: true, assets: { where: { type: "PHOTO" }, orderBy: { createdAt: "asc" }, take: 4 } } } } },
     },
   });
   if (!proposal || ["DECLINED", "EXPIRED"].includes(proposal.status) || (proposal.expiresAt && proposal.expiresAt < new Date())) return null;
@@ -240,6 +246,7 @@ export async function publicProposalDataForToken(token: string): Promise<PublicP
     },
     depositAmountCents: proposal.depositAmountCents,
     layout: proposal.layout,
+    photos: (proposal.estimate.job?.assets ?? []).map((asset) => proposalPhoto(asset.storageKey, asset.caption)).filter((photo): photo is { src: string; caption: string } => Boolean(photo)),
     demo: false,
   };
 }
@@ -272,5 +279,6 @@ export function publicProposalPdfData(data: PublicProposalData): ProposalPdfData
     depositAmountCents: data.depositAmountCents ?? undefined,
     currency: data.totals.currency,
     layout: data.layout,
+    photos: data.photos,
   };
 }

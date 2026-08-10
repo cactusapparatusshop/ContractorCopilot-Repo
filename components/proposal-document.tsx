@@ -22,6 +22,7 @@ export type ProposalDocumentData = {
   terms?: string | null;
   layout?: ProposalLayout;
   lines: { item: string; quantity: string; amount: number }[];
+  photos?: { src: string; caption: string }[];
 };
 
 export const demoProposalDocument: ProposalDocumentData = {
@@ -62,6 +63,7 @@ export function proposalDocumentFromPublic(data: PublicProposalData): ProposalDo
     terms: data.terms,
     layout: data.layout,
     lines: data.lineItems.map((line) => ({ item: line.description, quantity: `${line.quantity} ${line.unit}`, amount: line.lineTotalCents / 100 })),
+    photos: data.photos,
   };
 }
 
@@ -75,6 +77,7 @@ export function ProposalDocument({ portal = false, data = demoProposalDocument, 
     <h1>{data.title}</h1><p className="proposal-subtitle">Prepared for {data.customer.name} &middot; {data.jobAddress ?? "Project address on file"}</p>
     <div className="proposal-addresses"><div><b>Prepared for</b><p>{data.customer.name}<br />{data.customer.email}<br />{customerAddress.map((line) => <span key={line}>{line}<br /></span>)}</p></div><div><b>Prepared by</b><p>{data.company.name}<br />{data.company.phone}<br />{data.company.email}<br />{data.company.address}</p></div></div>
     <section className="proposal-scope"><h2>Scope of work</h2><p>{data.scope}</p></section>
+    {data.photos?.length ? <section className="proposal-photos"><h2>Jobsite photos</h2><div>{data.photos.map((photo, index) => <figure key={`${photo.caption}-${index}`}><img src={photo.src} alt={photo.caption} /><figcaption>{photo.caption}</figcaption></figure>)}</div></section> : null}
     <table className="proposal-table"><thead><tr><th>Description</th><th>Quantity</th>{selectedLayout === "DETAILED" && <th>Pricing</th>}<th>Amount</th></tr></thead><tbody>{data.lines.map((line) => <tr key={`${line.item}-${line.quantity}`}><td>{line.item}</td><td>{line.quantity}</td>{selectedLayout === "DETAILED" && <td>Included</td>}<td>{currency(line.amount, 2)}</td></tr>)}</tbody></table>
     <div className="proposal-total"><div><span>Subtotal</span><span>{currency(data.subtotal, 2)}</span></div><div><span>Sales tax</span><span>{currency(data.tax, 2)}</span></div><div><span>Total project investment</span><span>{currency(data.total, 2)}</span></div></div>
     <section style={{ marginTop: 42, paddingTop: 23, borderTop: "1px solid var(--line)" }}><h2 style={{ margin: "0 0 7px", fontSize: 14 }}>Terms &amp; warranty</h2><p style={{ margin: 0, color: "var(--ink-soft)", fontSize: 11, lineHeight: 1.65 }}>A {data.depositPercent}% deposit is due to reserve your installation date. {data.terms ?? "The remaining balance is due upon final walkthrough."}</p>{portal && <p style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 15, color: "var(--teal)", fontSize: 11, fontWeight: 700 }}><CheckCircle2 size={15} /> Your acceptance is recorded securely with this proposal.</p>}</section>

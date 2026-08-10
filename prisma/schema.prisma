@@ -292,6 +292,7 @@ model Asset {
   sizeBytes        Int?
   durationSeconds  Int?
   transcription    String?   @db.Text
+  caption          String?   @db.Text
   createdAt        DateTime  @default(now())
   job              Job?      @relation(fields: [jobId], references: [id], onDelete: Cascade)
   estimate         Estimate? @relation(fields: [estimateId], references: [id], onDelete: Cascade)

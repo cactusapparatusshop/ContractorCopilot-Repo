@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { CheckCircle2, Download, FileAudio, ImagePlus, LoaderCircle, Plus, Sparkles, Trash2, WandSparkles } from "lucide-react";
+import { CheckCircle2, CreditCard, Download, FileAudio, ImagePlus, LoaderCircle, Plus, Sparkles, Trash2, WandSparkles } from "lucide-react";
 import { ChangeEvent, useState } from "react";
 
 import { aiDraft } from "@/lib/demo-data";
@@ -58,6 +58,7 @@ export function EstimateWizard({ demo = false }: { demo?: boolean }) {
   const [proposalId, setProposalId] = useState<string | null>(null);
   const [measurements, setMeasurements] = useState(demo ? demoMeasurements : [{ label: "", quantity: "", unit: "EA" }]);
   const [photoNames, setPhotoNames] = useState<string[]>([]);
+  const [photoFiles, setPhotoFiles] = useState<File[]>([]);
   const [voiceNames, setVoiceNames] = useState<string[]>([]);
   const [generating, setGenerating] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -84,6 +85,16 @@ export function EstimateWizard({ demo = false }: { demo?: boolean }) {
     return data;
   }
 
+  async function uploadPhotos(activeJobId: string) {
+    if (!photoFiles.length || demo) return photoNames.map((name) => `Jobsite photo attached: ${name}`);
+    const form = new FormData();
+    photoFiles.slice(0, 4).forEach((file) => form.append("photos", file));
+    const response = await fetch(`/api/jobs/${encodeURIComponent(activeJobId)}/photos`, { method: "POST", body: form });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error ?? "We couldn’t upload the jobsite photos.");
+    return Array.isArray(data.photos) ? data.photos.map((photo: { caption?: string }) => photo.caption || "Jobsite photo") : [];
+  }
+
   async function generate() {
     if (!job.customerName.trim() || !job.trade || !job.notes.trim()) {
       setMessage("Add a client name, trade, and site notes before generating the proposal.");
@@ -106,12 +117,14 @@ export function EstimateWizard({ demo = false }: { demo?: boolean }) {
         activeJobId = createdJob.id;
         setJobId(activeJobId);
       }
+      if (!activeJobId) throw new Error("We couldnâ€™t create the job for these photos.");
+      const photoSummaries = await uploadPhotos(activeJobId);
       const result = await jsonRequest("/api/ai/estimate", {
         title: `${job.trade} proposal`,
         trade: job.trade,
         jobDescription: `Site notes:\n${job.notes}${job.materials ? `\n\nMaterials:\n${job.materials}` : ""}`,
         measurements: measurements.filter((item) => item.label || item.quantity).map((item) => `${item.label || "Measurement"}: ${item.quantity || "0"} ${item.unit}`).join("\n"),
-        photoSummaries: photoNames.map((name) => `Jobsite photo attached: ${name}`),
+        photoSummaries,
         voiceTranscript: voiceNames.length ? `Voice note attached: ${voiceNames.join(", ")}` : undefined,
         manualPricing: {
           materials: job.materials || undefined,
@@ -188,7 +201,7 @@ export function EstimateWizard({ demo = false }: { demo?: boolean }) {
           <div className="measurement-list">{measurements.map((measurement, index) => <div className="measurement-row" key={`${measurement.label}-${index}`}><input aria-label={`Measurement ${index + 1} label`} value={measurement.label} onChange={(event) => updateMeasurement(index, "label", event.target.value)} placeholder="Measurement" /><input aria-label={`Measurement ${index + 1} quantity`} value={measurement.quantity} onChange={(event) => updateMeasurement(index, "quantity", event.target.value)} placeholder="Qty" /><select aria-label={`Measurement ${index + 1} unit`} value={measurement.unit} onChange={(event) => updateMeasurement(index, "unit", event.target.value)}><option>LF</option><option>SF</option><option>EA</option><option>HR</option></select><button type="button" className="icon-button" aria-label="Remove measurement" onClick={() => setMeasurements((current) => current.length > 1 ? current.filter((_, idx) => idx !== index) : current)}><Trash2 size={14} /></button></div>)}</div>
           <button type="button" className="button button-ghost button-sm" style={{ marginTop: 10, paddingLeft: 0 }} onClick={() => setMeasurements((current) => [...current, { label: "", quantity: "", unit: "EA" }])}><Plus size={14} /> Add measurement</button>
           <div className="form-grid" style={{ marginTop: 17 }}>
-            <label className="upload-zone"><div><span className="icon-box"><ImagePlus /></span><b>{photoNames.length ? `${photoNames.length} jobsite photo${photoNames.length === 1 ? "" : "s"} selected` : "Drop jobsite photos here"}</b><p>{photoNames.length ? photoNames.join(", ") : "JPG, PNG, HEIC up to 15 MB each"}</p></div><input type="file" accept="image/jpeg,image/png,image/heic" multiple hidden onChange={(event) => fileNames(event, setPhotoNames)} /></label>
+            <label className="upload-zone"><div><span className="icon-box"><ImagePlus /></span><b>{photoNames.length ? `${photoNames.length} jobsite photo${photoNames.length === 1 ? "" : "s"} selected` : "Drop jobsite photos here"}</b><p>{photoNames.length ? photoNames.join(", ") : "JPG or PNG, up to 1.5 MB each"}</p></div><input type="file" accept="image/jpeg,image/png" multiple hidden onChange={(event) => { const files = Array.from(event.target.files ?? []); setPhotoFiles(files); setPhotoNames(files.map((file) => file.name)); }} /></label>
             <label className="upload-zone"><div><span className="icon-box blue"><FileAudio /></span><b>{voiceNames.length ? `${voiceNames.length} voice note selected` : "Record or upload a voice note"}</b><p>{voiceNames.length ? voiceNames.join(", ") : "Audio is prepared for transcription when storage is connected"}</p></div><input type="file" accept="audio/*" hidden onChange={(event) => fileNames(event, setVoiceNames)} /></label>
           </div>
         </section>
@@ -204,6 +217,7 @@ export function EstimateWizard({ demo = false }: { demo?: boolean }) {
         <div className="estimate-summary-head"><h2>{generated ? "Proposal summary" : "Your proposal"}</h2><p>{generated ? "Review every line before sharing it with your client." : "Add the proposal scope, then generate your draft."}</p></div>
         {generated ? <><div className="summary-lines">{lines.map((line) => <div className="summary-line" key={line.description}><div><b>{line.description}</b><small>{line.quantity} {line.unit} · {line.category}</small></div><span>{currency(line.amount, 2)}</span></div>)}</div><div className="summary-total"><span>Estimated total<br /><small style={{ fontWeight: 500 }}>Price-book calculation</small></span><strong>{currency(total, 2)}</strong></div></> : <div style={{ padding: "28px 19px", textAlign: "center", color: "var(--ink-faint)" }}><Sparkles size={24} style={{ marginBottom: 8, color: "var(--orange)" }} /><div style={{ fontSize: 12, lineHeight: 1.5 }}>Your itemized scope and price breakdown will appear here.</div></div>}
         <div className="summary-actions">{generated && proposalId ? <><button type="button" className="button button-primary" onClick={downloadProposal} disabled={downloading}>{downloading ? <><LoaderCircle className="spinner" /> Creating PDF…</> : <><Download size={15} /> Download proposal PDF</>}</button>{estimateId && <Link href={`/estimates/${encodeURIComponent(estimateId)}`} className="button button-outline">Review proposal layout</Link>}</> : <button type="button" className="button button-primary" onClick={generate} disabled={generating}>{generating ? <><LoaderCircle className="spinner" /> Drafting…</> : <><WandSparkles size={15} /> Generate to continue</>}</button>}</div>
+        <div className="payment-disclaimer"><CreditCard size={15} /><p><b>Payments and payouts</b> Online deposits only work after your Stripe Connect payout account is set up. Until then, collect payments separately through your preferred payment platform; this proposal does not move money on its own.</p></div>
         {persisted && <p style={{ padding: "0 20px 20px", margin: 0, color: "var(--teal)", fontSize: 11 }}>Saved securely in this workspace.</p>}
       </aside>
     </div>

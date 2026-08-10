@@ -33,6 +33,7 @@ export type ProposalPdfData = {
   depositAmountCents?: number;
   currency?: string;
   layout?: "CLEAN" | "DETAILED" | "PREMIUM";
+  photos?: { src: string; caption?: string }[];
 };
 
 function clean(value: string | undefined, max = 1_500) {
@@ -120,6 +121,29 @@ export async function generateProposalPdf(data: ProposalPdfData): Promise<Uint8A
 
   section("Scope of work");
   paragraph(data.scopeOfWork, 10);
+
+  const photos = (data.photos ?? []).filter((photo) => /^data:image\/(?:jpeg|png);base64,/.test(photo.src)).slice(0, 4);
+  if (photos.length) {
+    section("Jobsite photos");
+    for (const photo of photos) {
+      try {
+        const match = photo.src.match(/^data:(image\/(?:jpeg|png));base64,(.+)$/);
+        if (!match) continue;
+        const imageBytes = Buffer.from(match[2], "base64");
+        const image = match[1] === "image/png" ? await pdf.embedPng(imageBytes) : await pdf.embedJpg(imageBytes);
+        const scale = Math.min(contentWidth / image.width, 210 / image.height, 1);
+        const imageWidth = image.width * scale;
+        const imageHeight = image.height * scale;
+        ensure(imageHeight + 31);
+        page.drawImage(image, { x: margin, y: y - imageHeight, width: imageWidth, height: imageHeight });
+        y -= imageHeight + 6;
+        paragraph(clean(photo.caption, 360) || "Jobsite photo", 9);
+        y -= 4;
+      } catch {
+        // A corrupt uploaded image should never prevent the proposal PDF from downloading.
+      }
+    }
+  }
 
   section("Investment");
   ensure(35);
