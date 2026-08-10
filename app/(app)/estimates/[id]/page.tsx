@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/app-shell";
 import { ProposalActions } from "@/components/proposal-actions";
 import { ProposalContactCard, ProposalDocument, type ProposalDocumentData } from "@/components/proposal-document";
+import { ProposalPreview } from "@/components/proposal-preview";
 import { StatusBadge } from "@/components/status-badge";
 import { requireUser } from "@/lib/auth";
 import { getCompanyForUser, prisma } from "@/lib/db";
@@ -32,20 +33,13 @@ export default async function EstimateDetailPage({ params }: { params: Promise<{
   const total = estimate.totalCents / 100;
   const deposit = (proposal?.depositAmountCents ?? 0) / 100;
   const document: ProposalDocumentData = {
-    number: String(estimate.number),
-    title: estimate.job?.title ?? estimate.title,
+    number: String(estimate.number), title: estimate.job?.title ?? estimate.title,
     customer: { name: customerName, email: customer?.email, address: customerAddress },
     company: { name: estimate.company.name, email: estimate.company.email, phone: estimate.company.phone, address: estimate.company.address },
-    jobAddress: estimate.job?.address,
-    createdAt: date(estimate.createdAt),
-    validUntil: date(estimate.validUntil ?? proposal?.expiresAt),
-    depositPercent: total ? Math.round((deposit / total) * 100) : 0,
-    deposit,
+    jobAddress: estimate.job?.address, createdAt: date(estimate.createdAt), validUntil: date(estimate.validUntil ?? proposal?.expiresAt),
+    depositPercent: total ? Math.round((deposit / total) * 100) : 0, deposit,
     subtotal: (estimate.materialSubtotalCents + estimate.laborSubtotalCents + estimate.equipmentSubtotalCents + estimate.disposalSubtotalCents + estimate.otherSubtotalCents) / 100,
-    tax: estimate.taxCents / 100,
-    total,
-    scope: estimate.scopeOfWork,
-    terms: proposal?.terms,
+    tax: estimate.taxCents / 100, total, scope: estimate.scopeOfWork, terms: proposal?.terms,
     lines: estimate.items.map((item) => ({ item: item.description, quantity: `${Number(item.quantity)} ${item.unit}`, amount: Math.round(Number(item.quantity) * item.unitPriceCents) / 100 })),
   };
   const status = proposal?.status ?? estimate.status;
@@ -54,6 +48,14 @@ export default async function EstimateDetailPage({ params }: { params: Promise<{
       <StatusBadge status={status} />
       <Link href="/estimates" className="button button-outline button-sm"><ChevronLeft size={14} /> All proposals</Link>
     </PageHeader>
-    <section className="proposal-layout"><ProposalDocument data={document} /><aside className="proposal-side"><article className="card side-card"><h2>Proposal actions</h2><p>Download the itemized PDF, mark the proposal sent, or copy the secure customer link.</p><div style={{ display: "grid", gap: 8 }}>{proposal ? <ProposalActions proposalId={proposal.id} publicToken={proposal.publicToken} customerName={customerName} /> : <p style={{ color: "var(--ink-soft)", fontSize: 11 }}>This legacy estimate has no proposal record yet.</p>}</div></article><article className="card side-card"><h2>Proposal timeline</h2><div className="timeline"><div className="timeline-item"><b>Created as a draft</b><small>{date(estimate.createdAt)}</small></div>{proposal?.sentAt && <div className="timeline-item"><b>Marked as sent</b><small>{date(proposal.sentAt)}</small></div>}{proposal?.viewedAt && <div className="timeline-item"><b>Viewed by client</b><small>{date(proposal.viewedAt)}</small></div>}{proposal?.acceptedAt && <div className="timeline-item"><b>Accepted by {proposal.acceptedByName || customerName}</b><small>{date(proposal.acceptedAt)}</small></div>}{!proposal?.sentAt && <div className="timeline-item"><b>Ready to share</b><small>Copy the customer link when you’re ready</small></div>}</div></article><ProposalContactCard contact={estimate.company} /><article className="card side-card"><div className="icon-box blue"><FileText /></div><h2 style={{ marginTop: 12 }}>PDF-ready scope</h2><p>The client, trade, site notes, materials, labor, terms, totals, and deposit are preserved in this proposal.</p></article></aside></section>
+    <section className="proposal-layout">
+      {proposal ? <ProposalPreview proposalId={proposal.id} document={document} initialLayout={proposal.layout} /> : <ProposalDocument data={document} />}
+      <aside className="proposal-side">
+        <article className="card side-card"><h2>Proposal actions</h2><p>Download the itemized PDF, mark the proposal sent, or copy the secure customer link.</p><div style={{ display: "grid", gap: 8 }}>{proposal ? <ProposalActions proposalId={proposal.id} publicToken={proposal.publicToken} customerName={customerName} /> : <p style={{ color: "var(--ink-soft)", fontSize: 11 }}>This legacy estimate has no proposal record yet.</p>}</div></article>
+        <article className="card side-card"><h2>Proposal timeline</h2><div className="timeline"><div className="timeline-item"><b>Created as a draft</b><small>{date(estimate.createdAt)}</small></div>{proposal?.sentAt && <div className="timeline-item"><b>Marked as sent</b><small>{date(proposal.sentAt)}</small></div>}{proposal?.viewedAt && <div className="timeline-item"><b>Viewed by client</b><small>{date(proposal.viewedAt)}</small></div>}{proposal?.acceptedAt && <div className="timeline-item"><b>Accepted by {proposal.acceptedByName || customerName}</b><small>{date(proposal.acceptedAt)}</small></div>}{!proposal?.sentAt && <div className="timeline-item"><b>Ready to share</b><small>Copy the customer link when you’re ready</small></div>}</div></article>
+        <ProposalContactCard contact={estimate.company} />
+        <article className="card side-card"><div className="icon-box blue"><FileText /></div><h2 style={{ marginTop: 12 }}>PDF-ready scope</h2><p>The client, trade, site notes, materials, labor, terms, totals, and deposit are preserved in this proposal.</p></article>
+      </aside>
+    </section>
   </>;
 }

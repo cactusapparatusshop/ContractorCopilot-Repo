@@ -7,6 +7,7 @@ import { prisma, requireDatabase } from "@/lib/db";
 import { demoPublicProposal } from "@/lib/demo-proposal";
 import { HttpError, integerField, requireObject, stringField } from "@/lib/http";
 import type { ProposalPdfData, ProposalPdfLineItem } from "@/lib/pdf";
+import { isProposalLayout, type ProposalLayout } from "@/lib/proposal-layouts";
 
 function listOfStrings(value: unknown, field: string, maximumItems = 12, maximumLength = 600) {
   if (value === undefined || value === null) return undefined;
@@ -72,6 +73,7 @@ export function proposalPdfDataFromRequest(value: unknown): ProposalPdfData {
     totalCents: integerField(totals.totalCents, "proposal.totals.totalCents", { min: 0, max: 100_000_000 })!,
     depositAmountCents: integerField(proposal.depositAmountCents, "proposal.depositAmountCents", { required: false, min: 0, max: 100_000_000 }),
     currency,
+    layout: isProposalLayout(proposal.layout) ? proposal.layout : "CLEAN",
   };
 }
 
@@ -138,6 +140,7 @@ export async function proposalPdfDataForUser(proposalId: string, userId: string)
     totalCents: proposal.estimate.totalCents,
     depositAmountCents: proposal.depositAmountCents ?? undefined,
     currency: proposal.estimate.currency,
+    layout: proposal.layout,
   };
 }
 
@@ -161,6 +164,7 @@ export type PublicProposalData = {
   lineItems: ProposalPdfLineItem[];
   totals: { subtotalCents: number; markupCents: number; taxCents: number; totalCents: number; currency: string };
   depositAmountCents?: number | null;
+  layout: ProposalLayout;
   demo: boolean;
 };
 
@@ -185,6 +189,7 @@ export async function publicProposalDataForToken(token: string): Promise<PublicP
       lineItems: demo.lineItems,
       totals: { subtotalCents: demo.totals.subtotalCents ?? 0, markupCents: 0, taxCents: demo.totals.taxCents ?? 0, totalCents: demo.totals.totalCents ?? 0, currency: demo.totals.currency ?? "usd" },
       depositAmountCents: demo.depositAmountCents,
+      layout: "CLEAN",
       demo: true,
     };
   }
@@ -234,6 +239,7 @@ export async function publicProposalDataForToken(token: string): Promise<PublicP
       currency: proposal.estimate.currency,
     },
     depositAmountCents: proposal.depositAmountCents,
+    layout: proposal.layout,
     demo: false,
   };
 }
@@ -265,5 +271,6 @@ export function publicProposalPdfData(data: PublicProposalData): ProposalPdfData
     totalCents: data.totals.totalCents,
     depositAmountCents: data.depositAmountCents ?? undefined,
     currency: data.totals.currency,
+    layout: data.layout,
   };
 }

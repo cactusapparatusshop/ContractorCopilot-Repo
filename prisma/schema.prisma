@@ -57,6 +57,25 @@ enum ProposalStatus {
   EXPIRED
 }
 
+enum ProposalLayout {
+  CLEAN
+  DETAILED
+  PREMIUM
+}
+
+enum FeedbackKind {
+  BUG
+  FEATURE
+}
+
+enum FeedbackStatus {
+  NEW
+  REVIEWING
+  PLANNED
+  RESOLVED
+  CLOSED
+}
+
 enum PaymentType {
   DEPOSIT
   BALANCE
@@ -121,6 +140,7 @@ model User {
   twoFactorRecoveryCodes          TwoFactorRecoveryCode[]
   createdEstimates                Estimate[]              @relation("EstimateCreatedBy")
   auditLogs                       AuditLog[]              @relation("AuditActor")
+  feedbackSubmissions             FeedbackSubmission[]
 }
 
 model Account {
@@ -200,6 +220,7 @@ model Company {
   subscription                    Subscription?
   documentCreations               DocumentCreation[]
   auditLogs                       AuditLog[]
+  feedback                        FeedbackSubmission[]
 
   @@index([name])
 }
@@ -354,8 +375,30 @@ model Proposal {
   company            Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
   estimate           Estimate       @relation(fields: [estimateId], references: [id], onDelete: Cascade)
   payments           Payment[]
+  layout             ProposalLayout @default(CLEAN)
 
   @@index([companyId, status, updatedAt])
+}
+
+/** Product feedback submitted from a contractor workspace for platform review. */
+model FeedbackSubmission {
+  id          String         @id @default(cuid())
+  companyId   String
+  submittedById String
+  kind        FeedbackKind
+  status      FeedbackStatus @default(NEW)
+  title       String
+  details     String         @db.Text
+  pageUrl     String?
+  adminNotes  String?        @db.Text
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  company     Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  submittedBy User           @relation(fields: [submittedById], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([companyId, createdAt])
+  @@index([submittedById, createdAt])
 }
 
 model Payment {

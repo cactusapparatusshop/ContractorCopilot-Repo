@@ -3,10 +3,11 @@ import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { errorResponse, HttpError, readJson, requireSameOrigin, stringField } from "@/lib/http";
+import { isProposalLayout } from "@/lib/proposal-layouts";
 
 export const runtime = "nodejs";
 
-type ProposalActionRequest = { action?: unknown };
+type ProposalActionRequest = { action?: unknown; layout?: unknown };
 
 export async function POST(request: Request, context: { params: Promise<{ proposalId: string }> }) {
   try {
@@ -17,7 +18,7 @@ export async function POST(request: Request, context: { params: Promise<{ propos
     if (user.isDemo || !prisma) throw new HttpError(503, "PROPOSALS_UNAVAILABLE", "Proposal actions are unavailable in the preview workspace.");
     const body = await readJson<ProposalActionRequest>(request);
     const action = stringField(body.action, "action", { max: 32 });
-    const proposal = await prisma.proposal.findFirst({ where: { id: proposalId, company: { memberships: { some: { userId: user.id } } } }, select: { id: true, companyId: true, status: true, publicToken: true } });
+    const proposal = await prisma.proposal.findFirst({ where: { id: proposalId, company: { memberships: { some: { userId: user.id } } } }, select: { id: true, companyId: true, status: true, publicToken: true, layout: true } });
     if (!proposal) throw new HttpError(404, "PROPOSAL_NOT_FOUND", "That proposal was not found in your workspace.");
 
     if (action === "send") {
@@ -32,6 +33,12 @@ export async function POST(request: Request, context: { params: Promise<{ propos
     if (action === "follow_up") {
       await prisma.auditLog.create({ data: { companyId: proposal.companyId, actorId: user.id, action: "FOLLOW_UP_REQUESTED", entity: "Proposal", entityId: proposal.id } });
       return NextResponse.json({ message: "Follow-up reminder saved to your proposal activity." });
+    }
+    if (action === "set_layout") {
+      if (!isProposalLayout(body.layout)) throw new HttpError(400, "INVALID_REQUEST", "Choose a valid proposal layout.");
+      const updated = await prisma.proposal.update({ where: { id: proposal.id }, data: { layout: body.layout }, select: { layout: true } });
+      await prisma.auditLog.create({ data: { companyId: proposal.companyId, actorId: user.id, action: "PROPOSAL_LAYOUT_CHANGED", entity: "Proposal", entityId: proposal.id, metadata: { layout: updated.layout } } });
+      return NextResponse.json({ layout: updated.layout, message: "Proposal presentation updated." });
     }
     throw new HttpError(400, "INVALID_REQUEST", "Choose a valid proposal action.");
   } catch (error) {

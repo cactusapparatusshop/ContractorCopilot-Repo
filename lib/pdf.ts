@@ -32,6 +32,7 @@ export type ProposalPdfData = {
   totalCents: number;
   depositAmountCents?: number;
   currency?: string;
+  layout?: "CLEAN" | "DETAILED" | "PREMIUM";
 };
 
 function clean(value: string | undefined, max = 1_500) {
@@ -53,6 +54,8 @@ export async function generateProposalPdf(data: ProposalPdfData): Promise<Uint8A
   const margin = 48;
   const contentWidth = width - margin * 2;
   const currency = data.currency ?? "usd";
+  const layout = data.layout ?? "CLEAN";
+  const accent = layout === "PREMIUM" ? rgb(0.95, 0.34, 0.16) : layout === "DETAILED" ? rgb(0.18, 0.32, 0.48) : rgb(0.05, 0.45, 0.42);
   let page = pdf.addPage([width, height]);
   let y = height - margin;
 
@@ -96,7 +99,7 @@ export async function generateProposalPdf(data: ProposalPdfData): Promise<Uint8A
     write(label.toUpperCase(), 9, true, rgb(0.05, 0.45, 0.42));
   };
 
-  write(clean(data.companyName, 120) || "ContractorCopilot", 22, true, rgb(0.05, 0.45, 0.42));
+  write(clean(data.companyName, 120) || "ContractorCopilot", 22, true, accent);
   [data.companyAddress, data.companyPhone, data.companyEmail].map((value) => clean(value, 180)).filter(Boolean).forEach((value) => write(value, 9));
   y -= 8;
   write("PROPOSAL", 18, true);
@@ -104,6 +107,11 @@ export async function generateProposalPdf(data: ProposalPdfData): Promise<Uint8A
   if (data.validUntil) write(`Valid through ${clean(data.validUntil, 80)}`, 9);
   y -= 6;
 
+  if (layout === "PREMIUM") {
+    page.drawRectangle({ x: margin, y: y - 26, width: contentWidth, height: 26, color: rgb(1, 0.96, 0.93) });
+    page.drawText("A tailored plan for a job done right.", { x: margin + 10, y: y - 16, size: 10, font: bold, color: accent });
+    y -= 35;
+  }
   section("Prepared for");
   write(clean(data.customerName, 160) || "Customer", 11, true);
   if (data.customerEmail) write(clean(data.customerEmail, 180), 9);
@@ -115,7 +123,7 @@ export async function generateProposalPdf(data: ProposalPdfData): Promise<Uint8A
 
   section("Investment");
   ensure(35);
-  page.drawRectangle({ x: margin, y: y - 6, width: contentWidth, height: 20, color: rgb(0.93, 0.96, 0.95) });
+  page.drawRectangle({ x: margin, y: y - 6, width: contentWidth, height: 20, color: layout === "PREMIUM" ? rgb(1, 0.96, 0.93) : rgb(0.93, 0.96, 0.95) });
   page.drawText("DESCRIPTION", { x: margin + 6, y: y, size: 8, font: bold, color: rgb(0.12, 0.16, 0.2) });
   page.drawText("QTY", { x: 350, y: y, size: 8, font: bold, color: rgb(0.12, 0.16, 0.2) });
   page.drawText("AMOUNT", { x: 480, y: y, size: 8, font: bold, color: rgb(0.12, 0.16, 0.2) });

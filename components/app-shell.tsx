@@ -17,6 +17,7 @@ import {
   Search,
   Settings,
   ShieldCheck,
+  MessageSquarePlus,
   Users,
   X,
 } from "lucide-react";
@@ -68,6 +69,7 @@ function SidebarNav({ viewer, company, onNavigate }: { viewer: WorkspaceShellVie
     <div className="sidebar-group" style={{ marginTop: 22 }}>
       <span className="sidebar-label">Manage</span>
       <Link href="/settings" onClick={onNavigate} className={`nav-link ${isCurrentRoute(pathname, "/settings") ? "active" : ""}`}><Settings />Settings</Link>
+      <Link href="/feedback" onClick={onNavigate} className={`nav-link ${isCurrentRoute(pathname, "/feedback") ? "active" : ""}`}><MessageSquarePlus />Feedback</Link>
       {viewer.isPlatformAdmin && <Link href="/admin" onClick={onNavigate} className={`nav-link ${isCurrentRoute(pathname, "/admin") ? "active" : ""}`}><ShieldCheck />Platform admin</Link>}
     </div>
     <div className="sidebar-bottom">
