@@ -21,6 +21,9 @@ export type ProposalDocumentData = {
   scope: string;
   terms?: string | null;
   layout?: ProposalLayout;
+  customerCompanyName?: string | null;
+  customerLogoDataUrl?: string | null;
+  showCustomerLogo?: boolean;
   lines: { item: string; quantity: string; amount: number }[];
   photos?: { src: string; caption: string }[];
 };
@@ -62,6 +65,9 @@ export function proposalDocumentFromPublic(data: PublicProposalData): ProposalDo
     scope: data.scopeOfWork,
     terms: data.terms,
     layout: data.layout,
+    customerCompanyName: data.customerCompanyName,
+    customerLogoDataUrl: data.customerLogoDataUrl,
+    showCustomerLogo: Boolean(data.customerLogoDataUrl),
     lines: data.lineItems.map((line) => ({ item: line.description, quantity: `${line.quantity} ${line.unit}`, amount: line.lineTotalCents / 100 })),
     photos: data.photos,
   };
@@ -72,7 +78,7 @@ export function ProposalDocument({ portal = false, data = demoProposalDocument, 
   const selectedLayout = layout ?? data.layout ?? "CLEAN";
   const customerAddress = data.customer.address?.split("\n").filter(Boolean) ?? [];
   return <article className={`${paperClass} proposal-layout-${selectedLayout.toLowerCase()}`}>
-    <div className="proposal-paper-head"><MiniProductMark /><div className="proposal-meta"><b style={{ color: "var(--ink)" }}>PROPOSAL {data.number}</b><br />{data.createdAt && <>Created {data.createdAt}<br /></>}Valid through {data.validUntil ?? "the stated expiration date"}</div></div>
+    <div className="proposal-paper-head"><MiniProductMark /><div className="proposal-meta">{data.showCustomerLogo && data.customerLogoDataUrl ? <span className="proposal-customer-brand">{data.customerCompanyName && <b>{data.customerCompanyName}</b>}<img src={data.customerLogoDataUrl} alt={data.customerCompanyName ? `${data.customerCompanyName} logo` : "Customer company logo"} /></span> : null}<b style={{ color: "var(--ink)" }}>PROPOSAL {data.number}</b><br />{data.createdAt && <>Created {data.createdAt}<br /></>}Valid through {data.validUntil ?? "the stated expiration date"}</div></div>
     {selectedLayout === "PREMIUM" && <div className="proposal-premium-banner"><span>TAILORED PROJECT PROPOSAL</span><b>A clear plan for a job done right.</b></div>}
     <h1>{data.title}</h1><p className="proposal-subtitle">Prepared for {data.customer.name} &middot; {data.jobAddress ?? "Project address on file"}</p>
     <div className="proposal-addresses"><div><b>Prepared for</b><p>{data.customer.name}<br />{data.customer.email}<br />{customerAddress.map((line) => <span key={line}>{line}<br /></span>)}</p></div><div><b>Prepared by</b><p>{data.company.name}<br />{data.company.phone}<br />{data.company.email}<br />{data.company.address}</p></div></div>

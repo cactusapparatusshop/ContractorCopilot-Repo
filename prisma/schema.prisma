@@ -61,6 +61,9 @@ enum ProposalLayout {
   CLEAN
   DETAILED
   PREMIUM
+  EXECUTIVE
+  BLUEPRINT
+  SIGNATURE
 }
 
 enum FeedbackKind {
@@ -378,6 +381,9 @@ model Proposal {
   estimate           Estimate       @relation(fields: [estimateId], references: [id], onDelete: Cascade)
   payments           Payment[]
   layout             ProposalLayout @default(CLEAN)
+  customerCompanyName String?
+  customerLogoDataUrl String?        @db.Text
+  showCustomerLogo    Boolean        @default(false)
 
   @@index([companyId, status, updatedAt])
 }

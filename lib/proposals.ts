@@ -142,6 +142,8 @@ export async function proposalPdfDataForUser(proposalId: string, userId: string)
     depositAmountCents: proposal.depositAmountCents ?? undefined,
     currency: proposal.estimate.currency,
     layout: proposal.layout,
+    customerCompanyName: proposal.showCustomerLogo ? proposal.customerCompanyName ?? undefined : undefined,
+    customerLogoDataUrl: proposal.showCustomerLogo ? proposal.customerLogoDataUrl ?? undefined : undefined,
     photos: (proposal.estimate.job?.assets ?? [])
       .map((asset) => proposalPhoto(asset.storageKey, asset.caption))
       .filter((photo): photo is { src: string; caption: string } => Boolean(photo)),
@@ -169,6 +171,8 @@ export type PublicProposalData = {
   totals: { subtotalCents: number; markupCents: number; taxCents: number; totalCents: number; currency: string };
   depositAmountCents?: number | null;
   layout: ProposalLayout;
+  customerCompanyName?: string | null;
+  customerLogoDataUrl?: string | null;
   photos: { src: string; caption: string }[];
   demo: boolean;
 };
@@ -195,6 +199,8 @@ export async function publicProposalDataForToken(token: string): Promise<PublicP
       totals: { subtotalCents: demo.totals.subtotalCents ?? 0, markupCents: 0, taxCents: demo.totals.taxCents ?? 0, totalCents: demo.totals.totalCents ?? 0, currency: demo.totals.currency ?? "usd" },
       depositAmountCents: demo.depositAmountCents,
       layout: "CLEAN",
+      customerCompanyName: undefined,
+      customerLogoDataUrl: undefined,
       photos: [],
       demo: true,
     };
@@ -246,6 +252,8 @@ export async function publicProposalDataForToken(token: string): Promise<PublicP
     },
     depositAmountCents: proposal.depositAmountCents,
     layout: proposal.layout,
+    customerCompanyName: proposal.showCustomerLogo ? proposal.customerCompanyName : undefined,
+    customerLogoDataUrl: proposal.showCustomerLogo ? proposal.customerLogoDataUrl : undefined,
     photos: (proposal.estimate.job?.assets ?? []).map((asset) => proposalPhoto(asset.storageKey, asset.caption)).filter((photo): photo is { src: string; caption: string } => Boolean(photo)),
     demo: false,
   };
@@ -279,6 +287,8 @@ export function publicProposalPdfData(data: PublicProposalData): ProposalPdfData
     depositAmountCents: data.depositAmountCents ?? undefined,
     currency: data.totals.currency,
     layout: data.layout,
+    customerCompanyName: data.customerCompanyName ?? undefined,
+    customerLogoDataUrl: data.customerLogoDataUrl ?? undefined,
     photos: data.photos,
   };
 }

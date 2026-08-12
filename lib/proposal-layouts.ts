@@ -17,6 +17,9 @@ export const proposalLayouts = [
     shortName: "Premium",
     description: "Uses an elevated presentation and strong investment summary for higher-value projects.",
   },
+  { id: "EXECUTIVE", name: "Executive brief", shortName: "Executive", description: "A confident boardroom-style summary for decisive, high-value work." },
+  { id: "BLUEPRINT", name: "Blueprint", shortName: "Blueprint", description: "A structured technical presentation for detailed scopes and commercial projects." },
+  { id: "SIGNATURE", name: "Signature", shortName: "Signature", description: "A refined editorial layout with generous space for an elevated client experience." },
 ] as const;
 
 export type ProposalLayout = (typeof proposalLayouts)[number]["id"];

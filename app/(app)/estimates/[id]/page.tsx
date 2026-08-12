@@ -40,6 +40,7 @@ export default async function EstimateDetailPage({ params }: { params: Promise<{
     depositPercent: total ? Math.round((deposit / total) * 100) : 0, deposit,
     subtotal: (estimate.materialSubtotalCents + estimate.laborSubtotalCents + estimate.equipmentSubtotalCents + estimate.disposalSubtotalCents + estimate.otherSubtotalCents) / 100,
     tax: estimate.taxCents / 100, total, scope: estimate.scopeOfWork, terms: proposal?.terms,
+    customerCompanyName: proposal?.customerCompanyName, customerLogoDataUrl: proposal?.customerLogoDataUrl, showCustomerLogo: proposal?.showCustomerLogo,
     lines: estimate.items.map((item) => ({ item: item.description, quantity: `${Number(item.quantity)} ${item.unit}`, amount: Math.round(Number(item.quantity) * item.unitPriceCents) / 100 })),
     photos: (estimate.job?.assets ?? []).map((asset) => ({ src: asset.storageKey, caption: asset.caption ?? asset.originalFileName ?? "Jobsite photo" })).filter((photo) => photo.src.startsWith("data:image/")),
   };
@@ -50,7 +51,7 @@ export default async function EstimateDetailPage({ params }: { params: Promise<{
       <Link href="/estimates" className="button button-outline button-sm"><ChevronLeft size={14} /> All proposals</Link>
     </PageHeader>
     <section className="proposal-layout">
-      {proposal ? <ProposalPreview proposalId={proposal.id} document={document} initialLayout={proposal.layout} /> : <ProposalDocument data={document} />}
+      {proposal ? <ProposalPreview proposalId={proposal.id} document={document} initialLayout={proposal.layout} initialCustomerCompanyName={proposal.customerCompanyName} initialCustomerLogoDataUrl={proposal.customerLogoDataUrl} initialShowCustomerLogo={proposal.showCustomerLogo} /> : <ProposalDocument data={document} />}
       <aside className="proposal-side">
         <article className="card side-card"><h2>Proposal actions</h2><p>Download the itemized PDF, mark the proposal sent, or copy the secure customer link.</p><div style={{ display: "grid", gap: 8 }}>{proposal ? <ProposalActions proposalId={proposal.id} publicToken={proposal.publicToken} customerName={customerName} /> : <p style={{ color: "var(--ink-soft)", fontSize: 11 }}>This legacy estimate has no proposal record yet.</p>}</div></article>
         <article className="card side-card"><h2>Proposal timeline</h2><div className="timeline"><div className="timeline-item"><b>Created as a draft</b><small>{date(estimate.createdAt)}</small></div>{proposal?.sentAt && <div className="timeline-item"><b>Marked as sent</b><small>{date(proposal.sentAt)}</small></div>}{proposal?.viewedAt && <div className="timeline-item"><b>Viewed by client</b><small>{date(proposal.viewedAt)}</small></div>}{proposal?.acceptedAt && <div className="timeline-item"><b>Accepted by {proposal.acceptedByName || customerName}</b><small>{date(proposal.acceptedAt)}</small></div>}{!proposal?.sentAt && <div className="timeline-item"><b>Ready to share</b><small>Copy the customer link when you’re ready</small></div>}</div></article>

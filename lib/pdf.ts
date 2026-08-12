@@ -32,7 +32,9 @@ export type ProposalPdfData = {
   totalCents: number;
   depositAmountCents?: number;
   currency?: string;
-  layout?: "CLEAN" | "DETAILED" | "PREMIUM";
+  layout?: "CLEAN" | "DETAILED" | "PREMIUM" | "EXECUTIVE" | "BLUEPRINT" | "SIGNATURE";
+  customerCompanyName?: string;
+  customerLogoDataUrl?: string;
   photos?: { src: string; caption?: string }[];
 };
 
@@ -56,7 +58,7 @@ export async function generateProposalPdf(data: ProposalPdfData): Promise<Uint8A
   const contentWidth = width - margin * 2;
   const currency = data.currency ?? "usd";
   const layout = data.layout ?? "CLEAN";
-  const accent = layout === "PREMIUM" ? rgb(0.95, 0.34, 0.16) : layout === "DETAILED" ? rgb(0.18, 0.32, 0.48) : rgb(0.05, 0.45, 0.42);
+  const accent = layout === "PREMIUM" ? rgb(0.95, 0.34, 0.16) : layout === "BLUEPRINT" ? rgb(0.13, 0.29, 0.56) : layout === "SIGNATURE" ? rgb(0.42, 0.22, 0.1) : layout === "EXECUTIVE" || layout === "DETAILED" ? rgb(0.18, 0.32, 0.48) : rgb(0.05, 0.45, 0.42);
   let page = pdf.addPage([width, height]);
   let y = height - margin;
 
@@ -106,6 +108,12 @@ export async function generateProposalPdf(data: ProposalPdfData): Promise<Uint8A
   write("PROPOSAL", 18, true);
   if (data.proposalNumber) write(`Proposal #${clean(data.proposalNumber, 80)}`, 9);
   if (data.validUntil) write(`Valid through ${clean(data.validUntil, 80)}`, 9);
+  if (data.customerLogoDataUrl && /^data:image\/(?:jpeg|png);base64,/.test(data.customerLogoDataUrl)) {
+    try {
+      const match = data.customerLogoDataUrl.match(/^data:(image\/(?:jpeg|png));base64,(.+)$/);
+      if (match) { const logo = match[1] === "image/png" ? await pdf.embedPng(Buffer.from(match[2], "base64")) : await pdf.embedJpg(Buffer.from(match[2], "base64")); const scale = Math.min(80 / logo.width, 32 / logo.height, 1); page.drawImage(logo, { x: width - margin - logo.width * scale, y: height - margin - logo.height * scale, width: logo.width * scale, height: logo.height * scale }); }
+    } catch { /* Logo failure must not block PDF generation. */ }
+  }
   y -= 6;
 
   if (layout === "PREMIUM") {

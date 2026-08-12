@@ -7,7 +7,7 @@ import { isProposalLayout } from "@/lib/proposal-layouts";
 
 export const runtime = "nodejs";
 
-type ProposalActionRequest = { action?: unknown; layout?: unknown };
+type ProposalActionRequest = { action?: unknown; layout?: unknown; customerCompanyName?: unknown; customerLogoDataUrl?: unknown; showCustomerLogo?: unknown };
 
 export async function POST(request: Request, context: { params: Promise<{ proposalId: string }> }) {
   try {
@@ -39,6 +39,15 @@ export async function POST(request: Request, context: { params: Promise<{ propos
       const updated = await prisma.proposal.update({ where: { id: proposal.id }, data: { layout: body.layout }, select: { layout: true } });
       await prisma.auditLog.create({ data: { companyId: proposal.companyId, actorId: user.id, action: "PROPOSAL_LAYOUT_CHANGED", entity: "Proposal", entityId: proposal.id, metadata: { layout: updated.layout } } });
       return NextResponse.json({ layout: updated.layout, message: "Proposal presentation updated." });
+    }
+    if (action === "set_customer_brand") {
+      const customerCompanyName = stringField(body.customerCompanyName, "customerCompanyName", { required: false, max: 160 }) ?? null;
+      const customerLogoDataUrl = stringField(body.customerLogoDataUrl, "customerLogoDataUrl", { required: false, max: 110_000 }) ?? null;
+      if (customerLogoDataUrl && !/^data:image\/(?:jpeg|png);base64,[a-z0-9+/=]+$/i.test(customerLogoDataUrl)) throw new HttpError(400, "INVALID_REQUEST", "Use a JPG or PNG customer logo.");
+      if (typeof body.showCustomerLogo !== "boolean") throw new HttpError(400, "INVALID_REQUEST", "showCustomerLogo must be a boolean.");
+      const updated = await prisma.proposal.update({ where: { id: proposal.id }, data: { customerCompanyName, customerLogoDataUrl, showCustomerLogo: customerLogoDataUrl ? body.showCustomerLogo : false }, select: { customerCompanyName: true, customerLogoDataUrl: true, showCustomerLogo: true } });
+      await prisma.auditLog.create({ data: { companyId: proposal.companyId, actorId: user.id, action: "PROPOSAL_CUSTOMER_BRAND_CHANGED", entity: "Proposal", entityId: proposal.id, metadata: { showCustomerLogo: updated.showCustomerLogo } } });
+      return NextResponse.json(updated);
     }
     throw new HttpError(400, "INVALID_REQUEST", "Choose a valid proposal action.");
   } catch (error) {
