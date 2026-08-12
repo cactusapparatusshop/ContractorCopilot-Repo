@@ -4,6 +4,8 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "ContractorCopilot | Win more work with less paperwork",
   description: "AI-powered estimates, proposals, and deposits for specialty contractors.",
+  applicationName: "ContractorCopilot",
+  appleWebApp: { capable: true, title: "ContractorCopilot", statusBarStyle: "default" },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

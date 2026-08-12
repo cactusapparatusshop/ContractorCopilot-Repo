@@ -78,7 +78,9 @@ function lineItemDescription(value: string | undefined, fallback: string) {
 }
 
 function applyManualPricing(items: EstimateLineItemInput[], input: ManualPricing, trade?: string) {
-  const hasMaterials = Boolean(input.materials) || input.materialCostCents !== undefined;
+  // Material keywords are useful context for the AI. Only replace its detailed
+  // material line items when the contractor has explicitly supplied a cost.
+  const hasMaterials = input.materialCostCents !== undefined;
   const hasLabor = input.laborHours !== undefined || input.laborRateCents !== undefined;
   const result = items.filter((item) => !(hasMaterials && item.category === "MATERIAL") && !(hasLabor && item.category === "LABOR"));
   if (hasMaterials) {
@@ -119,16 +121,17 @@ export async function POST(request: Request) {
 
     const body = await readJson<EstimateRequest>(request);
     const jobDescription = stringField(body.jobDescription, "jobDescription", { max: 6_000 })!;
+    const manual = manualPricing(body.manualPricing);
     const input: EstimateGenerationInput = {
       title: stringField(body.title, "title", { required: false, max: 160 }),
       trade: stringField(body.trade, "trade", { required: false, max: 80 }),
       jobDescription,
+      materials: manual.materials,
       measurements: stringField(body.measurements, "measurements", { required: false, max: 3_000 }),
       voiceTranscript: stringField(body.voiceTranscript, "voiceTranscript", { required: false, max: 6_000 }),
       photoSummaries: photoSummaries(body.photoSummaries),
     };
     const jobId = stringField(body.jobId, "jobId", { required: false, max: 80 });
-    const manual = manualPricing(body.manualPricing);
     const save = body.save === true;
     if (body.save !== undefined && typeof body.save !== "boolean") {
       throw new HttpError(400, "INVALID_REQUEST", "save must be a boolean.");

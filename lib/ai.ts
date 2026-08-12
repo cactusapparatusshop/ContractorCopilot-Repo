@@ -6,6 +6,7 @@ export type EstimateGenerationInput = {
   title?: string;
   trade?: string;
   jobDescription: string;
+  materials?: string;
   measurements?: string;
   voiceTranscript?: string;
   photoSummaries?: string[];
@@ -156,6 +157,7 @@ export async function generateEstimateDraft(input: EstimateGenerationInput): Pro
     title: truncate(input.title, 160),
     trade: truncate(input.trade, 80),
     jobDescription: truncate(input.jobDescription, 6_000),
+    materials: truncate(input.materials, 4_000),
     measurements: truncate(input.measurements, 3_000),
     voiceTranscript: truncate(input.voiceTranscript, 6_000),
     photoSummaries: (input.photoSummaries ?? []).map((summary) => truncate(summary, 600)).filter(Boolean).slice(0, 12),
@@ -166,6 +168,8 @@ export async function generateEstimateDraft(input: EstimateGenerationInput): Pro
     instructions: [
       "You help specialty contractors prepare an internal estimate draft.",
       "Use only the supplied job facts. Never claim to have inspected images or conditions not described in the facts.",
+      "Short notes and material lists may be contractor shorthand. Expand them into a clear, customer-friendly scope and commonly required work components, but label anything uncertain as an assumption or warning.",
+      "Do not invent measurements, manufacturer specifications, permits, hidden damage, or supplier quotes. Use reasonable planning allowances only when a quantity or cost is not supplied.",
       "Provide concise scope, explicit assumptions/exclusions, and reviewable line items.",
       "Cost figures are planning allowances in cents, not supplier quotes. Flag uncertainty in warnings.",
       "Do not include personal data beyond what is necessary for the job.",
