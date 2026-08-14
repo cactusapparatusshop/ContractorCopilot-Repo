@@ -119,17 +119,13 @@ export function requireSameOrigin(request: Request) {
   if (!origin) return;
 
   const requestUrl = new URL(request.url);
-  const configuredAppUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.APP_URL ?? process.env.NEXTAUTH_URL;
-  const configuredOrigin = configuredAppUrl
-    ? new URL(configuredAppUrl).origin
-    : requestUrl.origin;
 
   // `next dev` commonly serves a local preview through either localhost or
   // 127.0.0.1. Treat those two loopback aliases as the same *only* in local
   // development, while preserving an exact-origin check everywhere else.
   if (process.env.NODE_ENV !== "production") {
     const originUrl = new URL(origin);
-    const configuredUrl = new URL(configuredOrigin);
+    const configuredUrl = requestUrl;
     const loopbackHosts = new Set(["localhost", "127.0.0.1", "[::1]"]);
     if (
       loopbackHosts.has(originUrl.hostname) &&
@@ -140,7 +136,10 @@ export function requireSameOrigin(request: Request) {
     }
   }
 
-  if (origin !== configuredOrigin) {
+  // Compare to the origin that actually received the request. This supports
+  // Vercel's production and preview aliases even when APP_URL is stale, while
+  // still rejecting browser POSTs initiated from a different site.
+  if (origin !== requestUrl.origin) {
     throw new HttpError(403, "CROSS_SITE_REQUEST", "This request must come from this application.");
   }
 }
