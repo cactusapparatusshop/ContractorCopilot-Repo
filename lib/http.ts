@@ -140,6 +140,10 @@ export function requireSameOrigin(request: Request) {
   // Vercel's production and preview aliases even when APP_URL is stale, while
   // still rejecting browser POSTs initiated from a different site.
   if (origin !== requestUrl.origin) {
+    // Vercel can forward a request to a deployment alias different from the
+    // browser's public alias. The browser-generated Fetch Metadata signal is
+    // still authoritative for an actual same-origin navigation or fetch.
+    if (request.headers.get("sec-fetch-site") === "same-origin") return;
     throw new HttpError(403, "CROSS_SITE_REQUEST", "This request must come from this application.");
   }
 }
