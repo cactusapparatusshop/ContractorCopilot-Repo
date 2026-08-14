@@ -2,10 +2,9 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 
 import { createMfaPendingToken, createSessionToken, demoUser, isDemoMode, MFA_PENDING_COOKIE, mfaPendingCookieOptions, SESSION_COOKIE, sessionCookieOptions } from "@/lib/auth";
-import { issueAccountToken } from "@/lib/account-tokens";
 import { prisma } from "@/lib/db";
-import { isEmailConfigured, sendVerificationEmail } from "@/lib/email";
 import { errorResponse, HttpError, passwordField, readJson, requireSameOrigin, stringField } from "@/lib/http";
+import { sendPhoneVerification } from "@/lib/phone-verification";
 import { takeRateLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
@@ -43,13 +42,6 @@ export async function POST(request: Request) {
       throw new HttpError(401, "INVALID_CREDENTIALS", "The email or password is incorrect.");
     }
 
-    if (!user.emailVerified) {
-      if (!isEmailConfigured()) throw new HttpError(503, "EMAIL_UNAVAILABLE", "Account email verification is not configured yet.");
-      const verificationToken = await issueAccountToken("verify-email", user.id, 24 * 60 * 60_000);
-      await sendVerificationEmail({ email: user.email, token: verificationToken });
-      throw new HttpError(403, "EMAIL_VERIFICATION_REQUIRED", "Verify your email before signing in. We sent you a fresh verification link.");
-    }
-
     const membership = user.memberships[0];
     const sessionUser = {
       id: user.id,
@@ -61,9 +53,19 @@ export async function POST(request: Request) {
       sessionVersion: user.sessionVersion,
     } as const;
 
+    if (user.phone) {
+      const limit = takeRateLimit(`phone-sign-in:${user.id}`, 5, 15 * 60_000);
+      if (!limit.allowed) throw new HttpError(429, "RATE_LIMITED", "Please wait before requesting another phone code.");
+      await sendPhoneVerification(user.phone);
+      const response = NextResponse.json({ mfaRequired: true, mfaMethod: "phone", phone: user.phone, mode: "live" });
+      response.cookies.set(MFA_PENDING_COOKIE, createMfaPendingToken(sessionUser, "phone"), mfaPendingCookieOptions);
+      response.cookies.set(SESSION_COOKIE, "", { ...sessionCookieOptions, maxAge: 0 });
+      return response;
+    }
+
     if (user.twoFactorEnabledAt && user.twoFactorSecretCiphertext) {
-      const response = NextResponse.json({ mfaRequired: true, email: user.email, mode: "live" });
-      response.cookies.set(MFA_PENDING_COOKIE, createMfaPendingToken(sessionUser), mfaPendingCookieOptions);
+      const response = NextResponse.json({ mfaRequired: true, mfaMethod: "totp", email: user.email, mode: "live" });
+      response.cookies.set(MFA_PENDING_COOKIE, createMfaPendingToken(sessionUser, "totp"), mfaPendingCookieOptions);
       response.cookies.set(SESSION_COOKIE, "", { ...sessionCookieOptions, maxAge: 0 });
       return response;
     }

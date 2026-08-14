@@ -95,6 +95,24 @@ export function TwoFactorSignInForm() {
   return <form onSubmit={submit}><div className="field"><label>Authenticator or recovery code</label><input name="code" autoComplete="one-time-code" inputMode="numeric" placeholder="123456 or ABCD-EFGH-IJKL" required autoFocus /></div><button className="button button-primary" style={{ marginTop: 16, width: "100%" }} disabled={loading}>{loading ? <><LoaderCircle className="spinner" /> Verifying…</> : "Verify and continue"}</button><Notice message={message} error /><p style={{ marginTop: 18, fontSize: 10, color: "var(--ink-faint)", textAlign: "center" }}>Use a six-digit code from your authenticator, or one unused recovery code.</p></form>;
 }
 
+export function PhoneVerificationForm() {
+  const [loading, setLoading] = useState<"verify" | "resend" | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState(false);
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); setLoading("verify"); setMessage(null); setError(false);
+    try {
+      await post("/api/auth/phone-verification/verify", { code: String(new FormData(event.currentTarget).get("code") ?? "") });
+      window.location.assign("/dashboard");
+    } catch (caught) { setError(true); setMessage(caught instanceof Error ? caught.message : "We couldn't verify that code."); } finally { setLoading(null); }
+  }
+  async function resend() {
+    setLoading("resend"); setMessage(null); setError(false);
+    try { await post("/api/auth/phone-verification/request", {}); setMessage("A new verification code has been sent."); } catch (caught) { setError(true); setMessage(caught instanceof Error ? caught.message : "We couldn't send another code."); } finally { setLoading(null); }
+  }
+  return <form onSubmit={submit}><div className="field"><label>Text-message code</label><input name="code" autoComplete="one-time-code" inputMode="numeric" pattern="[0-9]*" placeholder="123456" required autoFocus /></div><button className="button button-primary" style={{ marginTop: 16, width: "100%" }} disabled={loading !== null}>{loading === "verify" ? <><LoaderCircle className="spinner" /> Verifying…</> : "Verify and continue"}</button><button type="button" className="button button-outline" style={{ marginTop: 10, width: "100%" }} onClick={resend} disabled={loading !== null}>{loading === "resend" ? <><LoaderCircle className="spinner" /> Sending…</> : "Send a new code"}</button><Notice message={message} error={error} /><p style={{ marginTop: 18, fontSize: 10, color: "var(--ink-faint)", textAlign: "center" }}>Enter the code sent to the mobile number on your ContractorCopilot account.</p></form>;
+}
+
 type SetupInfo = { manualKey: string; otpAuthUrl: string; expiresInSeconds: number };
 
 export function TwoFactorSettings({ initialEnabled, available, preview }: { initialEnabled: boolean; available: boolean; preview?: boolean }) {

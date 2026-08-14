@@ -7,7 +7,7 @@ ContractorCopilot is an AI-first estimating SaaS for specialty contractors. It t
 - Contractor dashboard, jobs, CRM, proposals, billing, account-specific settings, and platform-admin previews
 - Job intake with client, trade, site notes, materials, material cost, labor hours/rate, measurements, jobsite-photo/audio selection, and AI estimate drafting
 - PostgreSQL/Prisma tenant schema for companies, memberships, customers, jobs, assets, estimates, proposals, payments, subscriptions, and audit logs
-- Email/password authentication with verified email, secure password recovery, signed HTTP-only sessions, and optional authenticator-app 2FA, plus a safe local demo mode
+- Email/password authentication with phone verification, signed HTTP-only sessions, and SMS second-factor sign-in, plus a safe local demo mode
 - OpenAI Responses API integration with structured estimate output and deterministic pricing
 - Branded, server-generated PDF proposals
 - Public customer portal protected by an opaque proposal token, with approval audit data and token-bound PDF download
@@ -61,7 +61,8 @@ Required production settings:
 | Area | Environment variables |
 | --- | --- |
 | App | `DATABASE_URL`, `DIRECT_URL`, `AUTH_SECRET` or `NEXTAUTH_SECRET`, `APP_URL`, `CRON_SECRET`, `DEMO_MODE=false` |
-| Email & account security | `RESEND_API_KEY`, a verified `RESEND_FROM_EMAIL`, and `TOTP_ENCRYPTION_KEY` (a unique 32-byte base64url or hexadecimal secret) |
+| Phone verification | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and `TWILIO_VERIFY_SERVICE_SID` (a Twilio Verify service configured for SMS) |
+| Optional email recovery / authenticator app | `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, and `TOTP_ENCRYPTION_KEY` (a unique 32-byte base64url or hexadecimal secret) |
 | AI | `OPENAI_API_KEY`, optionally `OPENAI_ESTIMATE_MODEL` |
 | SaaS billing | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_PRO_MONTHLY` (a USD recurring $49.99/month Stripe Price) |
 | Deposit collection | Contractor `stripeConnectAccountId` and `stripeConnectOnboardingComplete` must be set after Connect onboarding; optionally `STRIPE_CONNECT_APPLICATION_FEE_BPS` |
@@ -77,7 +78,9 @@ There are two intentionally separate payment paths:
 
 ## Account security
 
-New live accounts verify their email before they can sign in. The sign-in screen can resend a verification email, and the recovery flow emails a single-use password-reset link. Both email actions require a configured Resend API key and a verified sender domain or address.
+New live accounts verify their mobile number by text message before their workspace is activated. Every later password sign-in sends a fresh SMS code, making the verified number the second factor. Configure a Twilio Verify SMS service and the three `TWILIO_*` environment variables before enabling production registration. Existing accounts without a phone number remain usable, so the change does not lock out current users.
+
+Email is no longer required for registration verification. It remains optional for the existing password-recovery flow, which requires a configured Resend API key and verified sender.
 
 Each user can turn on time-based one-time password (TOTP) two-factor authentication in **Settings → Account security**. The setup key uses the standard `otpauth://` format, so Google Authenticator, Microsoft Authenticator, Authy, 1Password, and similar apps are supported. Users receive one-time recovery codes at setup; the app stores only their hashes.
 
