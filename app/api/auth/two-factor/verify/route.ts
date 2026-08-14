@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { createSessionToken, getMfaPendingState, MFA_PENDING_COOKIE, mfaPendingCookieOptions, SESSION_COOKIE, sessionCookieOptions } from "@/lib/auth";
+import { createSessionToken, getMfaPendingUser, MFA_PENDING_COOKIE, mfaPendingCookieOptions, SESSION_COOKIE, sessionCookieOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { errorResponse, HttpError, readJson, requireSameOrigin, stringField } from "@/lib/http";
 import { decryptTotpSecret, hashRecoveryCode, matchTotpCode } from "@/lib/two-factor";
@@ -13,9 +13,8 @@ type VerifyRequest = { code?: unknown };
 export async function POST(request: Request) {
   try {
     requireSameOrigin(request);
-    const pendingState = await getMfaPendingState();
-    if (!pendingState || pendingState.method !== "totp" || !prisma) throw new HttpError(401, "MFA_SESSION_REQUIRED", "Sign in with your password again before entering an authenticator code.");
-    const pending = pendingState.user;
+    const pending = await getMfaPendingUser();
+    if (!pending || !prisma) throw new HttpError(401, "MFA_SESSION_REQUIRED", "Sign in with your password again before entering an authenticator code.");
     const body = await readJson<VerifyRequest>(request);
     const code = stringField(body.code, "code", { max: 40 })!;
     const limit = takeRateLimit(`two-factor:${pending.id}`, 8, 15 * 60_000);

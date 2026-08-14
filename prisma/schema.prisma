@@ -124,8 +124,6 @@ enum DocumentKind {
 model User {
   id                              String                  @id @default(cuid())
   email                           String                  @unique
-  phone                           String?                 @unique
-  phoneVerifiedAt                 DateTime?
   passwordHash                    String?
   emailVerified                   DateTime?
   name                            String?

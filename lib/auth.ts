@@ -18,8 +18,7 @@ export type AuthUser = {
 };
 
 type SessionPayload = AuthUser & { exp: number; kind: "session" };
-export type MfaMethod = "phone" | "totp";
-type MfaPendingPayload = Pick<AuthUser, "id" | "email" | "name" | "sessionVersion"> & { exp: number; kind: "mfa"; method?: MfaMethod };
+type MfaPendingPayload = Pick<AuthUser, "id" | "email" | "name" | "sessionVersion"> & { exp: number; kind: "mfa" };
 
 export class AuthenticationError extends Error {
   status = 401;
@@ -78,7 +77,7 @@ export function createSessionToken(user: AuthUser, maxAgeSeconds = 60 * 60 * 24 
 }
 
 /** A short-lived cookie issued only after a password succeeds for an MFA user. */
-export function createMfaPendingToken(user: AuthUser, method: MfaMethod = "totp", maxAgeSeconds = 10 * 60) {
+export function createMfaPendingToken(user: AuthUser, maxAgeSeconds = 10 * 60) {
   const secret = sessionSecret();
   if (!secret) throw new AuthenticationError("AUTH_SECRET must be configured in production.");
   const payload: MfaPendingPayload = {
@@ -87,7 +86,6 @@ export function createMfaPendingToken(user: AuthUser, method: MfaMethod = "totp"
     name: user.name,
     sessionVersion: user.sessionVersion ?? 0,
     kind: "mfa",
-    method,
     exp: Math.floor(Date.now() / 1000) + maxAgeSeconds,
   };
   const encoded = encode(JSON.stringify(payload));
@@ -180,25 +178,17 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
 
 /** Resolves a password-authenticated user who still needs to complete TOTP. */
 export async function getMfaPendingUser(): Promise<AuthUser | null> {
-  const pending = await getMfaPendingState();
-  return pending?.user ?? null;
-}
-
-/** Resolves the user and verification method for an in-progress second factor. */
-export async function getMfaPendingState(): Promise<{ user: AuthUser; method: MfaMethod } | null> {
   const store = await cookies();
   const token = store.get(MFA_PENDING_COOKIE)?.value;
   if (!token) return null;
   const pending = readMfaPendingToken(token);
   if (!pending) return null;
-  const user = await validateStoredUser({
+  return validateStoredUser({
     id: pending.id,
     email: pending.email,
     name: pending.name,
     sessionVersion: pending.sessionVersion,
   });
-  if (!user) return null;
-  return { user, method: pending.method ?? "totp" };
 }
 
 export async function requireUser(): Promise<AuthUser> {
