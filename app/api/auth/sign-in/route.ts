@@ -2,9 +2,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 
 import { createMfaPendingToken, createSessionToken, demoUser, isDemoMode, MFA_PENDING_COOKIE, mfaPendingCookieOptions, SESSION_COOKIE, sessionCookieOptions } from "@/lib/auth";
-import { issueAccountToken } from "@/lib/account-tokens";
 import { prisma } from "@/lib/db";
-import { isEmailConfigured, sendVerificationEmail } from "@/lib/email";
 import { errorResponse, HttpError, passwordField, readJson, requireSameOrigin, stringField } from "@/lib/http";
 import { takeRateLimit } from "@/lib/rate-limit";
 
@@ -41,13 +39,6 @@ export async function POST(request: Request) {
     });
     if (!user?.passwordHash || !(await bcrypt.compare(password, user.passwordHash))) {
       throw new HttpError(401, "INVALID_CREDENTIALS", "The email or password is incorrect.");
-    }
-
-    if (!user.emailVerified) {
-      if (!isEmailConfigured()) throw new HttpError(503, "EMAIL_UNAVAILABLE", "Account email verification is not configured yet.");
-      const verificationToken = await issueAccountToken("verify-email", user.id, 24 * 60 * 60_000);
-      await sendVerificationEmail({ email: user.email, token: verificationToken });
-      throw new HttpError(403, "EMAIL_VERIFICATION_REQUIRED", "Verify your email before signing in. We sent you a fresh verification link.");
     }
 
     const membership = user.memberships[0];

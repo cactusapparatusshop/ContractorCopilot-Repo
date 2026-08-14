@@ -7,7 +7,7 @@ ContractorCopilot is an AI-first estimating SaaS for specialty contractors. It t
 - Contractor dashboard, jobs, CRM, proposals, billing, account-specific settings, and platform-admin previews
 - Job intake with client, trade, site notes, materials, material cost, labor hours/rate, measurements, jobsite-photo/audio selection, and AI estimate drafting
 - PostgreSQL/Prisma tenant schema for companies, memberships, customers, jobs, assets, estimates, proposals, payments, subscriptions, and audit logs
-- Email/password authentication with verified email, secure password recovery, signed HTTP-only sessions, and optional authenticator-app 2FA, plus a safe local demo mode
+- Email/password authentication with immediate account access, optional email password recovery, signed HTTP-only sessions, and optional authenticator-app 2FA, plus a safe local demo mode
 - OpenAI Responses API integration with structured estimate output and deterministic pricing
 - Branded, server-generated PDF proposals
 - Public customer portal protected by an opaque proposal token, with approval audit data and token-bound PDF download
@@ -77,7 +77,7 @@ There are two intentionally separate payment paths:
 
 ## Account security
 
-New live accounts verify their email before they can sign in. The sign-in screen can resend a verification email, and the recovery flow emails a single-use password-reset link. Both email actions require a configured Resend API key and a verified sender domain or address.
+New live accounts can sign in immediately after registration; email verification is not required. Email remains optional for the password-recovery flow, which sends a single-use reset link and requires a configured Resend API key and verified sender domain or address.
 
 Each user can turn on time-based one-time password (TOTP) two-factor authentication in **Settings → Account security**. The setup key uses the standard `otpauth://` format, so Google Authenticator, Microsoft Authenticator, Authy, 1Password, and similar apps are supported. Users receive one-time recovery codes at setup; the app stores only their hashes.
 

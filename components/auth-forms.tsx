@@ -5,7 +5,7 @@ import { ArrowRight, LoaderCircle } from "lucide-react";
 import { FormEvent, useState } from "react";
 
 type FormMode = "sign-in" | "sign-up";
-type AuthResult = { verificationRequired?: boolean; mfaRequired?: boolean; email?: string };
+type AuthResult = { mfaRequired?: boolean };
 type AuthFormProps = { mode: FormMode };
 
 export function AuthForm({ mode }: AuthFormProps) {
@@ -41,9 +41,7 @@ export function AuthForm({ mode }: AuthFormProps) {
           })
         : await request("/api/auth/sign-in", { email, password });
 
-      if (result.verificationRequired) {
-        setMessage(`Check ${result.email ?? email} for a verification link before signing in.`);
-      } else if (result.mfaRequired) {
+      if (result.mfaRequired) {
         window.location.assign("/two-factor");
       } else {
         window.location.assign("/dashboard");
@@ -73,7 +71,7 @@ export function AuthForm({ mode }: AuthFormProps) {
     <div className="field" style={isSignUp ? { marginTop: 13 } : undefined}><label>Email address</label><input name="email" type="email" autoComplete="email" placeholder="you@company.com" required /></div>
     <div className="field" style={{ marginTop: 13 }}><label>Password</label><input name="password" type="password" autoComplete={isSignUp ? "new-password" : "current-password"} placeholder={isSignUp ? "At least 12 characters" : "Your password"} minLength={isSignUp ? 12 : undefined} required /></div>
     {!isSignUp && <div style={{ display: "flex", justifyContent: "flex-end", margin: "11px 0 20px", color: "var(--ink-soft)", fontSize: 11 }}><Link href="/forgot-password" style={{ color: "var(--orange-dark)", fontWeight: 700 }}>Forgot password?</Link></div>}
-    {isSignUp && <p style={{ margin: "10px 0 20px", color: "var(--ink-faint)", fontSize: 10, lineHeight: 1.45 }}>Start with three free proposal creations. We will email you a verification link before your workspace is activated.</p>}
+    {isSignUp && <p style={{ margin: "10px 0 20px", color: "var(--ink-faint)", fontSize: 10, lineHeight: 1.45 }}>Start with three free proposal creations. Your workspace is ready as soon as you create your account.</p>}
     <button className="button button-primary" style={{ width: "100%" }} disabled={loading !== null}>{loading === "submit" ? <><LoaderCircle className="spinner" /> {isSignUp ? "Creating account…" : "Signing in…"}</> : <>{isSignUp ? "Create free account" : "Sign in"} <ArrowRight size={16} /></>}</button>
     <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "20px 0", color: "var(--ink-faint)", fontSize: 10 }}><span style={{ height: 1, flex: 1, background: "var(--line)" }} />OR<span style={{ height: 1, flex: 1, background: "var(--line)" }} /></div>
     <button type="button" className="button button-outline" style={{ width: "100%" }} onClick={startDemo} disabled={loading !== null}>{loading === "demo" ? <><LoaderCircle className="spinner" /> Opening preview…</> : "Explore the live demo"}</button>

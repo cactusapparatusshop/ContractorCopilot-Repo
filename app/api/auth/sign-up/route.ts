@@ -3,9 +3,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 
 import { createSessionToken, demoUser, isDemoMode, SESSION_COOKIE, sessionCookieOptions } from "@/lib/auth";
-import { issueAccountToken } from "@/lib/account-tokens";
 import { prisma } from "@/lib/db";
-import { isEmailConfigured, sendVerificationEmail } from "@/lib/email";
 import { errorResponse, HttpError, passwordField, readJson, requireSameOrigin, stringField } from "@/lib/http";
 import { takeRateLimit } from "@/lib/rate-limit";
 
@@ -27,7 +25,7 @@ function uniqueSlug(companyName: string) {
   return `${root}-${randomUUID().slice(0, 7)}`;
 }
 
-/** Creates the first company owner and asks them to verify their email. */
+/** Creates the first company owner and signs them in immediately. */
 export async function POST(request: Request) {
   try {
     requireSameOrigin(request);
@@ -49,10 +47,6 @@ export async function POST(request: Request) {
       return response;
     }
 
-    if (!isEmailConfigured()) {
-      throw new HttpError(503, "EMAIL_UNAVAILABLE", "Account email verification is not configured yet. Please try again shortly.");
-    }
-
     const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
     if (existing) throw new HttpError(409, "EMAIL_IN_USE", "An account with that email already exists.");
     const passwordHash = await bcrypt.hash(password, 12);
@@ -63,9 +57,9 @@ export async function POST(request: Request) {
       return { user, company, membership };
     });
 
-    const verificationToken = await issueAccountToken("verify-email", created.user.id, 24 * 60 * 60_000);
-    await sendVerificationEmail({ email: created.user.email, token: verificationToken });
-    return NextResponse.json({ verificationRequired: true, email: created.user.email, company: { id: created.company.id, name: created.company.name }, mode: "live" }, { status: 201 });
+    const response = NextResponse.json({ user: { id: created.user.id, email: created.user.email, name: created.user.name }, company: { id: created.company.id, name: created.company.name }, mode: "live" }, { status: 201 });
+    response.cookies.set(SESSION_COOKIE, createSessionToken({ id: created.user.id, email: created.user.email, name: created.user.name, companyId: created.company.id, role: created.membership.role, isDemo: false, sessionVersion: created.user.sessionVersion }), sessionCookieOptions);
+    return response;
   } catch (error) {
     return errorResponse(error);
   }
